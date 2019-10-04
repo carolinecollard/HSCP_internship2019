@@ -28,17 +28,29 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
- #include "FWCore/Utilities/interface/InputTag.h"
- #include "DataFormats/TrackReco/interface/Track.h"
- #include "DataFormats/TrackReco/interface/TrackFwd.h"
- #include "FWCore/ServiceRegistry/interface/Service.h"
- #include "CommonTools/UtilAlgos/interface/TFileService.h"
+#include "FWCore/Utilities/interface/InputTag.h"
+#include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
+#include "DataFormats/PatCandidates/interface/IsolatedTrack.h"
 
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 #include "DataFormats/TrackReco/interface/DeDxHitInfo.h"
 #include "RecoTracker/DeDx/interface/DeDxTools.h"
 #include "DataFormats/TrackReco/interface/TrackToTrackMap.h"
+
+#include "DataFormats/MuonReco/interface/MuonFwd.h"
+#include "DataFormats/MuonReco/interface/Muon.h"
+#include "AnalysisDataFormats/SUSYBSMObjects/interface/MuonSegment.h"
+#include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
+#include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
+
 
 #include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
 #include "SimDataFormats/CrossingFrame/interface/MixCollection.h"
@@ -50,7 +62,10 @@
 
 #include "HSCP_codeFromAnalysis.h"
 
- #include "TH1.h"
+#include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCParticle.h"
+#include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCPIsolation.h"
+
+#include "TH1.h"
 #include <TTree.h>
 //
 // class declaration
@@ -69,6 +84,8 @@ const int nMaxStrip = 100000;
 const int nMaxStripprim = 100000;
 const int nMaxSimHit = 100000;
 const int nMaxGen = 1000;
+const int nMaxMuon = 10000;
+const int nMaxHSCP = 10000;
 
 
 class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
@@ -85,10 +102,24 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
       virtual void endJob() override;
 
       // ----------member data ---------------------------
+       std::string m_format;
+       edm::EDGetTokenT<reco::VertexCollection> m_primaryVertexTag;
        edm::EDGetTokenT<reco::TrackCollection>  m_tracksTag;
+       edm::EDGetTokenT<std::vector<pat::IsolatedTrack>>  m_isotracksTag;
+       edm::EDGetTokenT< susybsm::HSCParticleCollection  > m_hscpcand;
+       edm::EDGetTokenT< susybsm::HSCPIsolationValueMap  > m_hscpiso;
+//       edm::EDGetTokenT<std::vector<reco::PFCandidate> >  m_tracksMiniAOD;
        edm::EDGetTokenT<reco::DeDxHitInfoAss>   m_dedxTag;
+       edm::EDGetTokenT<edm::Association<std::vector<reco::DeDxHitInfo> > >  m_dedxMiniTag;
+       edm::EDGetTokenT<edm::ValueMap<int>> m_dedxPrescaleTag;
        edm::EDGetTokenT< edm::DetSetVector<StripDigiSimLink> > m_stripSimLink;
        edm::EDGetTokenT< std::vector<reco::GenParticle> > genParticlesToken_;
+       edm::EDGetTokenT<reco::MuonCollection>  m_muonTag;
+       edm::EDGetTokenT<reco::MuonTimeExtraMap>  m_muontimecb;
+       edm::EDGetTokenT<reco::MuonTimeExtraMap>  m_muontimedt;
+       edm::EDGetTokenT<reco::MuonTimeExtraMap>  m_muontimecsc;
+
+
 //       edm::EDGetTokenT< edm::ValueMap<reco::DeDxData> > dEdxTrackToken_;
 
        bool m_runOnGS;
@@ -111,6 +142,7 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        TTree *smalltree;
        int      tree_runNumber ;
        int      tree_event ;
+       int      tree_npv;
 
        int      tree_genpart;
        int      tree_gen_pdg[nMaxGen];
@@ -126,14 +158,22 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
 
        int      tree_ntracks ;
        float    tree_track_pt[nMaxTrack];
+       float    tree_track_pterr[nMaxTrack];
        float    tree_track_p[nMaxTrack];
        float    tree_track_eta[nMaxTrack];
        float    tree_track_phi[nMaxTrack];
+       float    tree_track_charge[nMaxTrack];
        float    tree_track_chi2[nMaxTrack];
        int      tree_track_nvalidhits[nMaxTrack];
+       int      tree_track_npixhits[nMaxTrack];
+       int      tree_track_missing[nMaxTrack];
+       float    tree_track_validfrac[nMaxTrack];
+       float    tree_track_validlast[nMaxTrack];
+       int      tree_track_qual[nMaxTrack];
 //       float    tree_track_dedx_harmonic2[nMaxTrack];
        int      tree_track_index_hit[nMaxTrack];
        int      tree_track_nhits[nMaxTrack];
+       int      tree_track_prescale[nMaxTrack];
        float    tree_track_ih_ampl[nMaxTrack];
        float    tree_track_ih_ampl_corr[nMaxTrack];
        float    tree_track_ias_ampl[nMaxTrack];
@@ -190,7 +230,34 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        float    tree_simhit_yexit[nMaxSimHit];
        float    tree_simhit_zexit[nMaxSimHit];
        
+       int      tree_nmuons ;
+       float    tree_muon_pt[nMaxMuon];
+       float    tree_muon_ptSA[nMaxMuon];
+       float    tree_muon_ptIT[nMaxMuon];
+       float    tree_muon_p[nMaxMuon];
+       float    tree_muon_eta[nMaxMuon];
+       float    tree_muon_phi[nMaxMuon];
+       float    tree_muon_comb_inversebeta[nMaxMuon];
+       float    tree_muon_comb_inversebetaerr[nMaxMuon];
+       int      tree_muon_comb_tofndof[nMaxMuon];
+       float    tree_muon_comb_vertextime[nMaxMuon];
+       float    tree_muon_dt_inversebeta[nMaxMuon];
+       float    tree_muon_dt_inversebetaerr[nMaxMuon];
+       int      tree_muon_dt_tofndof[nMaxMuon];
+       float    tree_muon_dt_vertextime[nMaxMuon];
+       float    tree_muon_csc_inversebeta[nMaxMuon];
+       float    tree_muon_csc_inversebetaerr[nMaxMuon];
+       int      tree_muon_csc_tofndof[nMaxMuon];
+       float    tree_muon_csc_vertextime[nMaxMuon];
 
+       int      tree_hscp ;
+       int      tree_hscp_gen_id[nMaxHSCP];
+       float    tree_hscp_gen_dr[nMaxHSCP];
+       int      tree_hscp_track_idx[nMaxHSCP];
+       int      tree_hscp_muon_idx[nMaxHSCP];
+       float    tree_hscp_iso_tk[nMaxHSCP];
+       float    tree_hscp_iso_ecal[nMaxHSCP];
+       float    tree_hscp_iso_hcal[nMaxHSCP];
 
 
 };
@@ -214,8 +281,16 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
 {
 */
 {
+   m_format   = iConfig.getParameter<std::string>("format_file");
+   m_primaryVertexTag   = consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("primaryVertexColl"));
    m_tracksTag = consumes<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("tracks"));
+   m_isotracksTag = consumes<std::vector<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("isotracks"));
+//   m_tracksMiniAOD = consumes<std::vector<reco::PFCandidate> >(iConfig.getParameter<edm::InputTag>("PFCand"));
+   m_hscpcand = consumes<susybsm::HSCParticleCollection >(iConfig.getParameter<edm::InputTag>("collectionHSCP"));
+   m_hscpiso = consumes< susybsm::HSCPIsolationValueMap  >(iConfig.getParameter<edm::InputTag>("isoHSCP"));
    m_dedxTag = consumes<reco::DeDxHitInfoAss>(iConfig.getParameter<edm::InputTag>("dedx"));
+   m_dedxMiniTag = consumes<edm::Association<std::vector<reco::DeDxHitInfo> >>(iConfig.getParameter<edm::InputTag>("MiniDedx"));
+   m_dedxPrescaleTag = consumes<edm::ValueMap<int>>(iConfig.getParameter<edm::InputTag>("dEdxHitInfoPrescale"));
    m_runOnGS = iConfig.getParameter<bool>("runOnGS");
    printOut_ = iConfig.getUntrackedParameter<int>("printOut");
    m_stripSimLink = consumes< edm::DetSetVector<StripDigiSimLink> >(iConfig.getParameter<edm::InputTag>("stripSimLinks"));
@@ -232,6 +307,11 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    //loadDeDxTemplates
    dEdxTemplatesUncorr = loadDeDxTemplate ("/opt/sbg/data/safe1/cms/ccollard/HSCP/CMSSW_9_4_3/src/stage/ntuple/test/minbias_template_uncorr_iter1.root", true);
    dEdxTemplatesCorr = loadDeDxTemplate ("/opt/sbg/data/safe1/cms/ccollard/HSCP/CMSSW_9_4_3/src/stage/ntuple/test/minbias_template_corr_iter1.root", true);
+   m_muonTag = consumes<reco::MuonCollection>(iConfig.getParameter<edm::InputTag>("muons"));
+   m_muontimecb = consumes< reco::MuonTimeExtraMap >(iConfig.getParameter<edm::InputTag>("muonTOF"));
+   m_muontimedt = consumes< reco::MuonTimeExtraMap >(iConfig.getParameter<edm::InputTag>("muonTDT"));
+   m_muontimecsc = consumes< reco::MuonTimeExtraMap >(iConfig.getParameter<edm::InputTag>("muonTCSC"));
+
 
    //now do what ever initialization is needed
    usesResource("TFileService");
@@ -241,6 +321,7 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    smalltree = fs->make<TTree>("ttree", "ttree");
    smalltree -> Branch ( "runNumber", &tree_runNumber ) ;
    smalltree -> Branch ( "event",     &tree_event ) ;
+   smalltree -> Branch ( "npv",     &tree_npv ) ;
 
 
    smalltree -> Branch ( "ngenpart",  &tree_genpart) ;
@@ -258,14 +339,22 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
 
    smalltree -> Branch ( "ntracks",              &tree_ntracks ) ;
    smalltree -> Branch ( "track_pt",             tree_track_pt,             "track_pt[ntracks]/F" );
+   smalltree -> Branch ( "track_pterr",          tree_track_pterr,          "track_pterr[ntracks]/F" );
    smalltree -> Branch ( "track_p",              tree_track_p,              "track_p[ntracks]/F"  );
    smalltree -> Branch ( "track_eta",            tree_track_eta,            "track_eta[ntracks]/F" );
    smalltree -> Branch ( "track_phi",            tree_track_phi,            "track_phi[ntracks]/F" );
+   smalltree -> Branch ( "track_charge",         tree_track_charge,         "track_charge[ntracks]/F" );
    smalltree -> Branch ( "track_chi2",           tree_track_chi2,           "track_chi2[ntracks]/F" );
    smalltree -> Branch ( "track_nvalidhits",     tree_track_nvalidhits,     "track_nvalidhits[ntracks]/I" );
+   smalltree -> Branch ( "track_npixhits",       tree_track_npixhits,       "track_npixhits[ntracks]/I" );
+   smalltree -> Branch ( "track_missing",        tree_track_missing,        "track_missing[ntracks]/I" );
+   smalltree -> Branch ( "track_validfraction",  tree_track_validfrac,      "track_validfraction[ntracks]/F" );
+   smalltree -> Branch ( "track_validlast",      tree_track_validlast,      "track_validlast[ntracks]/F" );
+   smalltree -> Branch ( "track_qual",           tree_track_qual,           "track_qual[ntracks]/I" );
 //   smalltree -> Branch ( "track_dedx_harmonic2", tree_track_dedx_harmonic2, "track_dedx_harmonic2[ntracks]/F" );
    smalltree -> Branch ( "track_index_hit",      tree_track_index_hit,      "track_index_hit[ntracks]/I" );
    smalltree -> Branch ( "track_nhits",          tree_track_nhits,          "track_nhits[ntracks]/I"  );
+   smalltree -> Branch ( "track_prescale",       tree_track_prescale,       "track_prescale[ntracks]/I" );
    smalltree -> Branch ( "track_ih_ampl",        tree_track_ih_ampl,        "track_ih_ampl[ntracks]/F" );
    smalltree -> Branch ( "track_ih_ampl_corr",   tree_track_ih_ampl_corr,   "track_ih_ampl_corr[ntracks]/F" );
    smalltree -> Branch ( "track_ias_ampl",       tree_track_ias_ampl,       "track_ias_ampl[ntracks]/F" );
@@ -322,6 +411,35 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    smalltree -> Branch ( "simhit_xexit",   tree_simhit_xexit,   "simhit_xexit[nsimhits]/F");
    smalltree -> Branch ( "simhit_yexit",   tree_simhit_yexit,   "simhit_yexit[nsimhits]/F");
    smalltree -> Branch ( "simhit_zexit",   tree_simhit_zexit,   "simhit_zexit[nsimhits]/F");
+
+   smalltree -> Branch ( "nmuons",              &tree_nmuons ) ;
+   smalltree -> Branch ( "muon_pt",             tree_muon_pt,             "muon_pt[nmuons]/F" );
+   smalltree -> Branch ( "muon_ptSA",           tree_muon_ptSA,           "muon_ptSA[nmuons]/F" );
+   smalltree -> Branch ( "muon_ptIT",           tree_muon_ptIT,           "muon_ptIT[nmuons]/F" );
+   smalltree -> Branch ( "muon_p",              tree_muon_p,              "muon_p[nmuons]/F"  );
+   smalltree -> Branch ( "muon_eta",            tree_muon_eta,            "muon_eta[nmuons]/F" );
+   smalltree -> Branch ( "muon_phi",            tree_muon_phi,            "muon_phi[nmuons]/F" );
+   smalltree -> Branch ( "muon_comb_inversebeta",    tree_muon_comb_inversebeta,    "muon_comb_inversebeta[nmuons]/F" );
+   smalltree -> Branch ( "muon_comb_inversebetaerr", tree_muon_comb_inversebetaerr, "muon_comb_inversebetaerr[nmuons]/F" );
+   smalltree -> Branch ( "muon_comb_tofndof",        tree_muon_comb_tofndof,        "muon_comb_tofndof[nmuons]/I" );
+   smalltree -> Branch ( "muon_comb_vertextime",     tree_muon_comb_vertextime,     "muon_comb_vertextime[nmuons]/I" );
+   smalltree -> Branch ( "muon_dt_inversebeta",      tree_muon_dt_inversebeta,      "muon_dt_inversebeta[nmuons]/F" );
+   smalltree -> Branch ( "muon_dt_inversebetaerr",   tree_muon_dt_inversebetaerr,   "muon_dt_inversebetaerr[nmuons]/F" );
+   smalltree -> Branch ( "muon_dt_tofndof",          tree_muon_dt_tofndof,          "muon_dt_tofndof[nmuons]/I" );
+   smalltree -> Branch ( "muon_dt_vertextime",       tree_muon_dt_vertextime,       "muon_dt_vertextime[nmuons]/I" );
+   smalltree -> Branch ( "muon_csc_inversebeta",     tree_muon_csc_inversebeta,     "muon_csc_inversebeta[nmuons]/F" );
+   smalltree -> Branch ( "muon_csc_inversebetaerr",  tree_muon_csc_inversebetaerr,  "muon_csc_inversebetaerr[nmuons]/F" );
+   smalltree -> Branch ( "muon_csc_tofndof",         tree_muon_csc_tofndof,         "muon_csc_tofndof[nmuons]/I" );
+   smalltree -> Branch ( "muon_csc_vertextime",      tree_muon_csc_vertextime,      "muon_csc_vertextime[nmuons]/I" );
+
+   smalltree -> Branch ( "nhscp",              &tree_hscp ) ;
+   smalltree -> Branch ( "hscp_gen_id",        tree_hscp_gen_id,             "hscp_gen_id[nhscp]/I" );
+   smalltree -> Branch ( "hscp_gen_dr",        tree_hscp_gen_dr,             "hscp_gen_dr[nhscp]/F" );
+   smalltree -> Branch ( "hscp_track_idx",     tree_hscp_track_idx,          "hscp_track_idx[nhscp]/I" );
+   smalltree -> Branch ( "hscp_muon_idx",      tree_hscp_muon_idx,           "hscp_muon_idx[nhscp]/I" );
+   smalltree -> Branch ( "hscp_iso_tk",        tree_hscp_iso_tk,             "hscp_iso_tk[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso_ecal",      tree_hscp_iso_ecal,           "hscp_iso_ecal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso_hcal",      tree_hscp_iso_hcal,           "hscp_iso_hcal[nhscp]/F" );
 }
 
 
@@ -352,15 +470,75 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     tree_runNumber = myEvId.run();
     tree_event = myEvId.event();
 
+    
+    edm::Handle<reco::VertexCollection> primaryVertex ;
+    iEvent.getByToken(m_primaryVertexTag,primaryVertex);
+    tree_npv = primaryVertex->size();
+
 
     edm::Handle<reco::TrackCollection> trackCollectionHandle;
-    iEvent.getByToken(m_tracksTag,trackCollectionHandle);
+//    edm::Handle<std::vector<reco::PFCandidate> > pCands;
+    edm::Handle<std::vector<pat::IsolatedTrack>>  IsotrackCollectionHandle;
+    if (m_format != "miniAOD" ) {iEvent.getByToken(m_tracksTag,trackCollectionHandle); }
+//    else {iEvent.getByToken(m_tracksMiniAOD,pCands);}
+    else {iEvent.getByToken(m_isotracksTag,IsotrackCollectionHandle);}
 
 
     // inspired by /opt/sbg/data/safe1/cms/ccollard/HSCP/CMSSW_9_4_3/src/SUSYBSMAnalysis-HSCP/test/UsefulScripts/DeDxStudy/DeDxStudy
     edm::Handle<reco::DeDxHitInfoAss> dedxCollH;
-    iEvent.getByToken(m_dedxTag,dedxCollH);
-    if (!dedxCollH.isValid()) std::cout << " access problem to dedxHitInfo collection " << std::endl;
+    edm::Handle<edm::Association<std::vector<reco::DeDxHitInfo> > > dedxMiniH;
+    if (m_format != "miniAOD" ) { 
+            iEvent.getByToken(m_dedxTag,dedxCollH);
+            if (!dedxCollH.isValid()) std::cout << " access problem to dedxHitInfo collection " << std::endl;
+    } 
+    else {
+            iEvent.getByToken(m_dedxMiniTag,dedxMiniH);
+            if (!dedxMiniH.isValid()) std::cout << " access problem to dedxHitInfo collection " << std::endl;
+    }
+
+    // inspired by https://github.com/cms-sw/cmssw/blob/master/PhysicsTools/PatAlgos/plugins/PATIsolatedTrackProducer.cc
+    edm::Handle<edm::ValueMap<int>> dedxHitInfoPrescale;
+    if (m_format != "miniAOD" ) {
+     iEvent.getByToken(m_dedxPrescaleTag, dedxHitInfoPrescale);
+    }
+
+
+    // inspired by SUSYBSMAnalysis/HSCP/test/AnalysisCode/Analysis_Step1_EventLoop.C
+    edm::Handle<susybsm::HSCParticleCollection> hscpCollH;
+    edm::Handle<susybsm::HSCPIsolationValueMap> isoHSCPColl;
+    if (m_format != "miniAOD" ) {
+      iEvent.getByToken(m_hscpcand,hscpCollH);
+      if(!hscpCollH.isValid()){printf("HSCParticle Collection NotFound\n");}
+      iEvent.getByToken(m_hscpiso,isoHSCPColl);
+      if(!isoHSCPColl.isValid()){printf("HSCPIsolation Collection NotFound\n");}
+    }
+
+
+
+
+    edm::Handle<reco::MuonCollection> muonCollectionHandle;
+    if (m_format != "miniAOD" ) {
+     iEvent.getByToken(m_muonTag,muonCollectionHandle);
+    }
+
+
+    edm::Handle<reco::MuonTimeExtraMap> TOFCollH;
+//    iEvent.getByLabel("muons", "combined",TOFCollH);
+//    if (m_format != "miniAOD" ) iEvent.getByLabel("muons","combined",TOFCollH);
+    if (m_format != "miniAOD" ) {
+     iEvent.getByToken(m_muontimecb,TOFCollH);
+     if (!TOFCollH.isValid()) { std::cout << " access problem to TOF collection " << std::endl; }
+    }
+    edm::Handle<reco::MuonTimeExtraMap> TOFDTCollH;
+    if (m_format != "miniAOD" ) {
+      iEvent.getByToken(m_muontimedt,TOFDTCollH);
+      if (!TOFDTCollH.isValid()) std::cout << " access problem to DT TOF collection " << std::endl;
+    }
+    edm::Handle<reco::MuonTimeExtraMap> TOFCSCCollH;
+    if (m_format != "miniAOD" ) {
+     iEvent.getByToken(m_muontimecsc,TOFCSCCollH);
+     if (!TOFCSCCollH.isValid()) std::cout << " access problem to CSC TOF collection " << std::endl;
+    }
 
 
     // inspired by https://github.com/cms-sw/cmssw/blob/master/Validation/TrackerRecHits/test/StripClusterMCanalysis.cc
@@ -429,7 +607,7 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     // https://github.com/CMS-HSCP/SUSYBSMAnalysis-HSCP/blob/master/plugins/BigNtuplizer.cc
     
     tree_genpart=0;
-    if (m_runOnGS) {
+//    if (m_runOnGS) {
     edm::Handle< std::vector<reco::GenParticle> > GenColl;
     iEvent.getByToken(genParticlesToken_, GenColl);
 
@@ -443,6 +621,14 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       if(genCand->status()!=1)continue;
       int AbsPdg=abs(genCand->pdgId());
       if(AbsPdg<1000000 && AbsPdg!=17)continue;
+*/
+
+      if (genCand->pt()<5) continue;
+/*
+      int absPdg = abs(genCand->pdgId());
+      if (absPdg>1000000 || absPdg==17) {
+          std::cout << " particle " << absPdg << "     status "  << genCand->status()          << std::endl;
+      } 
 */
       if (tree_genpart<nMaxGen) {
        tree_gen_pdg[tree_genpart]=genCand->pdgId();
@@ -461,7 +647,7 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       }
      }
     } // if n_genp
-    } // if runOnGS
+//    } // if runOnGS
 
      //
     tree_ntracks=0;
@@ -469,9 +655,68 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     tree_nstrips=0;
     tree_nstrips_corr=0;
     tree_nsimhits=0;
-      
-    for(unsigned int c=0;c<trackCollectionHandle->size();c++){
-      reco::TrackRef track = reco::TrackRef( trackCollectionHandle.product(), c );
+    tree_nmuons=0;
+     
+    std::vector<reco::TrackRef> KeepTrackRefVec;
+    unsigned int ntrack_in_coll=0;
+    if (m_format != "miniAOD" ) {ntrack_in_coll=trackCollectionHandle->size();}
+//    else {ntrack_in_coll=pCands->size();} 
+    else {ntrack_in_coll=IsotrackCollectionHandle->size();} 
+
+//    for(unsigned int c=0;c<trackCollectionHandle->size();c++){
+    for(unsigned int c=0;c<ntrack_in_coll;c++){
+//      reco::TrackRef track;
+
+      float pt_tr=0;
+      float pterr_tr=0;
+      float p_tr=0;
+      float eta_tr=0;
+      float phi_tr=0;
+      float charge_tr=0;
+      float chi2_tr=0;
+      int nh_tr=0;
+      int nhpix_tr=0;
+      int nmisstilL_tr=0;
+      float frac_tr=-1;
+      float frac2_tr=-1;
+      int qual_tr=0;
+      const reco::DeDxHitInfo* dedxHits = nullptr;
+      reco::DeDxHitInfoRef dedxHitsRef;
+
+      if (m_format != "miniAOD" ) {  // AOD on RECO General Tracks
+
+          reco::TrackRef  track = reco::TrackRef( trackCollectionHandle.product(), c ); 
+          if (printOut_ > 0) std::cout << " track with pT =  " << track->pt() << std::endl;
+          pt_tr=track->pt();
+          pterr_tr=track->ptError();
+          p_tr=track->p();
+          eta_tr=track->eta();
+          phi_tr=track->phi();
+          charge_tr=track->charge();
+          chi2_tr=track->chi2()/track->ndof();
+          nh_tr=track->numberOfValidHits();
+          nhpix_tr=track->hitPattern().numberOfValidPixelHits();
+          nmisstilL_tr=track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS) + track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);
+          frac_tr=track->validFraction();
+          frac2_tr=track->found()<=0?-1:track->found() / float(track->found() + nmisstilL_tr);
+          qual_tr=track->qualityMask();
+          dedxHitsRef = dedxCollH->get(track.key());
+          if(!dedxHitsRef.isNull())dedxHits = &(*dedxHitsRef);
+          if(!dedxHitsRef.isNull() && tree_ntracks < nMaxTrack) KeepTrackRefVec.push_back(track);
+      }
+      else {   // miniAOD on PAT Isolated Tracks
+//          auto &track = (*IsotrackCollectionHandle)[c];
+          edm::Ref<std::vector<pat::IsolatedTrack> > track = edm::Ref<std::vector<pat::IsolatedTrack> >( IsotrackCollectionHandle, c );
+          if (printOut_ > 0) std::cout << " track with pT =  " << track->pt() << std::endl;
+          pt_tr=track->pt();
+          p_tr=track->p();
+          eta_tr=track->eta();
+          phi_tr=track->phi();
+//          chi2_tr=track.chi2()/track.ndof();
+//          nh_tr=track.numberOfValidHits();
+          dedxHitsRef = (*dedxMiniH)[track];
+          if(!dedxHitsRef.isNull())dedxHits = &(*dedxHitsRef);
+      }
 //     for(reco::TrackCollection::const_iterator track = trackCollectionHandle->begin(); track != trackCollectionHandle->end(); ++track)
       //basic track quality cuts
       ////if(track.isNull())continue;
@@ -481,21 +726,39 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
       if (tree_ntracks < nMaxTrack) {
 
-       if (printOut_ > 0) std::cout << " track with pT =  " << track->pt() << std::endl;
 
+/*
        tree_track_pt[tree_ntracks]= track->pt();
        tree_track_p[tree_ntracks]= track->p();
        tree_track_eta[tree_ntracks]= track->eta();
        tree_track_phi[tree_ntracks]= track->phi();
        tree_track_chi2[tree_ntracks]= track->chi2()/track->ndof();
        tree_track_nvalidhits[tree_ntracks]= track->numberOfValidHits();
+*/
+       tree_track_pt[tree_ntracks]= pt_tr;
+       tree_track_pterr[tree_ntracks]= pterr_tr;
+       tree_track_p[tree_ntracks]=  p_tr;
+       tree_track_eta[tree_ntracks]= eta_tr;
+       tree_track_phi[tree_ntracks]= phi_tr;
+       tree_track_charge[tree_ntracks]= charge_tr; 
+       tree_track_chi2[tree_ntracks]= chi2_tr; 
+       tree_track_nvalidhits[tree_ntracks]= nh_tr;
+       tree_track_npixhits[tree_ntracks]= nhpix_tr;
+       tree_track_missing[tree_ntracks]= nmisstilL_tr;
+       tree_track_validfrac[tree_ntracks]= frac_tr;
+       tree_track_validlast[tree_ntracks]= frac2_tr;
+       tree_track_qual[tree_ntracks]= qual_tr;
 
 
        //load dEdx informations
-       const reco::DeDxHitInfo* dedxHits = nullptr;
-       reco::DeDxHitInfoRef dedxHitsRef = dedxCollH->get(track.key());
-       if(!dedxHitsRef.isNull())dedxHits = &(*dedxHitsRef);
        if(!dedxHits)continue;
+
+       if (m_format != "miniAOD" ) {  // AOD on RECO General Tracks
+        tree_track_prescale[tree_ntracks] = (*dedxHitInfoPrescale)[dedxHitsRef];
+       }
+       else {
+        tree_track_prescale[tree_ntracks] = -1;
+       }
 
        // load the dedx estimator
        /*
@@ -521,8 +784,10 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        // values for 2016 MC --> which values for 2017???
        //double dEdxSF [2] = { 1.09711, 1.09256 };  // 0 : Strip SF, 1 : Pixel to Strip SF
        // new SF Profile
-       double dEdxSF [2] = { 1., 1.2025 };  // 0 : Strip SF, 1 : Pixel to Strip SF
-       double dEdxSF_corr [2] = { 1., 1.5583 };  // 0 : Strip SF, 1 : Pixel to Strip SF
+//       double dEdxSF [2] = { 1., 1.2025 };  // 0 : Strip SF, 1 : Pixel to Strip SF
+//       double dEdxSF_corr [2] = { 1., 1.5583 };  // 0 : Strip SF, 1 : Pixel to Strip SF
+       double dEdxSF [2] = { 1., 1. };  // 0 : Strip SF, 1 : Pixel to Strip SF
+       double dEdxSF_corr [2] = { 1., 1. };  // 0 : Strip SF, 1 : Pixel to Strip SF
 
        // Hits, SF, Templates, usePixel, useClusterCleaning, reverseProb, useTrunc,  TrackerGains, useStrips, mustBeInside, MaxStripNOM, 
        // correctFEDSat, CrossTalkInv, dropLowerValue, ErrorDeDx
@@ -784,7 +1049,196 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 
     } // end loop TrackCollection
-    
+
+
+    std::vector<reco::MuonRef> KeepMuonRefVec;
+    if (m_format != "miniAOD" )  {
+    for(unsigned int c=0;c<muonCollectionHandle->size();c++){
+      reco::MuonRef muon  = reco::MuonRef( muonCollectionHandle, c );
+
+      if (tree_nmuons < nMaxMuon) {
+       KeepMuonRefVec.push_back(muon);
+       if (printOut_ > 0) std::cout << " muon with pT =  " << muon->pt() << std::endl;
+       tree_muon_pt[tree_nmuons]= muon->pt();
+       if (muon->isStandAloneMuon()) {
+             tree_muon_ptSA[tree_nmuons] = muon->standAloneMuon()->pt();
+       }
+       else {
+            tree_muon_ptSA[tree_nmuons]= -1;
+       }
+       if (muon->innerTrack().isNonnull()) tree_muon_ptIT[tree_nmuons]= muon->innerTrack()->pt();
+       else tree_muon_ptIT[tree_nmuons]= -1;
+       tree_muon_p[tree_nmuons]= muon->p();
+       tree_muon_eta[tree_nmuons]= muon->eta();
+       tree_muon_phi[tree_nmuons]= muon->phi();
+
+       const reco::MuonTimeExtra* tof = NULL;
+       const reco::MuonTimeExtra* dttof = NULL;
+       const reco::MuonTimeExtra* csctof = NULL;
+
+       if (TOFCollH.isValid()) {
+       tof  = &TOFCollH->get(muon.key()); 
+       tree_muon_comb_inversebeta[tree_nmuons] = tof->inverseBeta();
+       tree_muon_comb_inversebetaerr[tree_nmuons] = tof->inverseBetaErr();
+       tree_muon_comb_tofndof[tree_nmuons] = tof->nDof();
+       tree_muon_comb_vertextime[tree_nmuons] = tof->timeAtIpInOut();
+       }
+       else {
+       tree_muon_comb_inversebeta[tree_nmuons] = -10;
+       tree_muon_comb_inversebetaerr[tree_nmuons] = -10;
+       tree_muon_comb_tofndof[tree_nmuons] = 0;
+       tree_muon_comb_vertextime[tree_nmuons] = -10;
+       }
+       if (TOFDTCollH.isValid()) {
+       dttof = &TOFDTCollH->get(muon.key());  
+       tree_muon_dt_inversebeta[tree_nmuons] = dttof->inverseBeta();
+       tree_muon_dt_inversebetaerr[tree_nmuons] = dttof->inverseBetaErr();
+       tree_muon_dt_tofndof[tree_nmuons] = dttof->nDof();
+       tree_muon_dt_vertextime[tree_nmuons] = dttof->timeAtIpInOut();
+       }
+       else {
+       tree_muon_dt_inversebeta[tree_nmuons] = -10;
+       tree_muon_dt_inversebetaerr[tree_nmuons] = -10;
+       tree_muon_dt_tofndof[tree_nmuons] = 0;
+       tree_muon_dt_vertextime[tree_nmuons] = -10;
+       }
+       if (TOFCSCCollH.isValid()) {
+       csctof = &TOFCSCCollH->get(muon.key());
+       tree_muon_csc_inversebeta[tree_nmuons] = csctof->inverseBeta();
+       tree_muon_csc_inversebetaerr[tree_nmuons] = csctof->inverseBetaErr();
+       tree_muon_csc_tofndof[tree_nmuons] = csctof->nDof();
+       tree_muon_csc_vertextime[tree_nmuons] = csctof->timeAtIpInOut();
+       }
+       else {
+       tree_muon_csc_inversebeta[tree_nmuons] = -10;
+       tree_muon_csc_inversebetaerr[tree_nmuons] = -10;
+       tree_muon_csc_tofndof[tree_nmuons] = 0;
+       tree_muon_csc_vertextime[tree_nmuons] = -10;
+       }
+       tree_nmuons++;
+
+      } // end if MaxMuon
+    } // end loop MuonCollectoon
+    } // end if AOD
+
+
+     //loop on HSCP candidates
+     tree_hscp=0;
+     if (m_format != "miniAOD" && hscpCollH.isValid()) {
+
+     const susybsm::HSCParticleCollection& hscpColl = *hscpCollH;
+     for(unsigned int c=0;c<hscpColl.size();c++){
+       //define alias for important variable
+       susybsm::HSCParticle hscp  = hscpColl[c];
+       reco::MuonRef  muon  = hscp.muonRef();
+ 
+       //For TOF only analysis use updated stand alone muon track.
+       //Otherwise use inner tracker track      
+       reco::TrackRef track = hscp.trackRef();
+
+       std::cout << "HSCP candidate " << c << std::endl;
+       if (track.isNull()) std::cout << "probleme track isNull"<< std::endl;
+       if (muon.isNull()) std::cout << "probleme muon isNull"<< std::endl;
+
+       if (tree_hscp<nMaxHSCP) {
+
+
+
+       if (n_genp>0 && !track.isNull()) {
+        double RMin = 9999;
+        int idxG=-1;
+        for(int i=0;i< n_genp ;++i){
+         const reco::GenParticle* genCand = &(*GenColl)[i];
+         if(genCand->pt()<5) continue;
+         if(genCand->status()!=1)continue;
+         int AbsPdg=abs(genCand->pdgId());
+         if(AbsPdg<1000000 && AbsPdg!=17)continue;
+         double dR = deltaR(track->eta(), track->phi(), genCand->eta(), genCand->phi());
+         if(dR<RMin){ 
+           RMin=dR;
+           idxG=genCand->pdgId();
+         }
+        }
+        tree_hscp_gen_id[tree_hscp]=idxG;
+        tree_hscp_gen_dr[tree_hscp]=RMin;
+       }
+       else {
+        tree_hscp_gen_id[tree_hscp]=-1;
+        tree_hscp_gen_dr[tree_hscp]=-1;
+       }
+
+       float Mindelta=0.001;
+       int tr_index=-1;
+       if (KeepTrackRefVec.size()>0 && !track.isNull()) {
+         if (printOut_ > 0 ) std::cout << "KeepTrackRefVec.size()" << KeepTrackRefVec.size() << std::endl;
+         for(unsigned int tr=0;tr<KeepTrackRefVec.size();tr++){
+            if( fabs( (1.0/KeepTrackRefVec[tr]->pt())-(1.0/track->pt())) < Mindelta) {
+                  Mindelta=fabs( (1.0/KeepTrackRefVec[tr]->pt())-(1.0/track->pt()));
+                  tr_index=tr;
+            } 
+         }
+         if (printOut_ > 0  && tr_index>-1)   std::cout << "association HSCP - track " << KeepTrackRefVec[tr_index]->pt() << "  "  << track->pt() 
+                          << "   " << KeepTrackRefVec[tr_index]->eta() << "  "  << track->eta() 
+                          << "   " << KeepTrackRefVec[tr_index]->phi() << "  "  << track->phi() << std::endl;
+       }
+       tree_hscp_track_idx[tree_hscp]=tr_index;
+
+       float Mindelta2=0.001;
+       int mu_index=-1;
+       if (KeepMuonRefVec.size()>0 && !muon.isNull()) {
+         if (printOut_ > 0 ) std::cout << "KeepMuonRefVec.size()" << KeepMuonRefVec.size() << std::endl;
+         for(unsigned int tr=0;tr<KeepMuonRefVec.size();tr++){
+            if( fabs( (1.0/KeepMuonRefVec[tr]->pt())-(1.0/muon->pt())) < Mindelta2) {
+                  Mindelta2=fabs( (1.0/KeepMuonRefVec[tr]->pt())-(1.0/muon->pt()));
+                  mu_index=tr;
+            } 
+         }
+         if (printOut_ > 0  && mu_index>-1)   std::cout << "association HSCP - track " << KeepMuonRefVec[mu_index]->pt() << "  "  << track->pt() 
+                          << "   " << KeepMuonRefVec[mu_index]->eta() << "  "  << track->eta() 
+                          << "   " << KeepMuonRefVec[mu_index]->phi() << "  "  << track->phi() << std::endl;
+       }
+       tree_hscp_muon_idx[tree_hscp]=mu_index;
+
+
+       if (!track.isNull() && isoHSCPColl.isValid()) {
+           const ValueMap<susybsm::HSCPIsolation>& IsolationMap = *isoHSCPColl.product();
+           susybsm::HSCPIsolation hscpIso = IsolationMap.get((size_t)track.key());   
+           if (printOut_ > 0) std::cout << "HSCP iso " << hscpIso.Get_TK_SumEt() << "  "  << hscpIso.Get_ECAL_Energy() 
+                                        << "     "  << hscpIso.Get_HCAL_Energy() << "  for HSCP p " << track->p()  << std::endl;
+           tree_hscp_iso_tk[tree_hscp]=hscpIso.Get_TK_SumEt();
+           tree_hscp_iso_ecal[tree_hscp]=hscpIso.Get_ECAL_Energy();
+           tree_hscp_iso_hcal[tree_hscp]=hscpIso.Get_HCAL_Energy();
+       }
+       else {
+           tree_hscp_iso_tk[tree_hscp]=-10;
+           tree_hscp_iso_ecal[tree_hscp]=-10;
+           tree_hscp_iso_hcal[tree_hscp]=-10;
+       }
+
+//       if(TypeMode!=3) track = hscp.trackRef();
+//       else {
+//         if(muon.isNull()) continue;
+//         track = muon->standAloneMuon();
+//       }
+       //skip events without track
+//       if(track.isNull())continue;
+       
+       //require a track segment in the muon system
+       //if(TypeMode>1 && TypeMode!=5 && (muon.isNull() || !muon->isStandAloneMuon()))continue;
+      
+       //Apply a scale factor to muon only analysis to account for differences seen in data/MC preselection efficiency
+       //For eta regions where Data > MC no correction to be conservative
+       //if(!isData && TypeMode==3 && scaleFactor(track->eta())<RNG->Uniform(0, 1)) continue;
+     
+        tree_hscp++;
+       }
+
+     } // end loop HSCP 
+
+    } // end if HSCP collection valid and !miniAOD
+
+
+
 
 
 
