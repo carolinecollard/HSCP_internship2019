@@ -1136,9 +1136,9 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        //Otherwise use inner tracker track      
        reco::TrackRef track = hscp.trackRef();
 
-       std::cout << "HSCP candidate " << c << std::endl;
-       if (track.isNull()) std::cout << "probleme track isNull"<< std::endl;
-       if (muon.isNull()) std::cout << "probleme muon isNull"<< std::endl;
+       if (printOut_ > 0) std::cout << "HSCP candidate " << c << std::endl;
+       if (track.isNull() && printOut_ > 0 ) std::cout << "probleme track isNull"<< std::endl;
+       if (muon.isNull() && printOut_ > 0 ) std::cout << "probleme muon isNull"<< std::endl;
 
        if (tree_hscp<nMaxHSCP) {
 
@@ -1193,9 +1193,9 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                   mu_index=tr;
             } 
          }
-         if (printOut_ > 0  && mu_index>-1)   std::cout << "association HSCP - track " << KeepMuonRefVec[mu_index]->pt() << "  "  << track->pt() 
-                          << "   " << KeepMuonRefVec[mu_index]->eta() << "  "  << track->eta() 
-                          << "   " << KeepMuonRefVec[mu_index]->phi() << "  "  << track->phi() << std::endl;
+         if (printOut_ > 0  && mu_index>-1  )   std::cout << "association HSCP - muon " << KeepMuonRefVec[mu_index]->pt() << "  "  << muon->pt() 
+                          << "   " << KeepMuonRefVec[mu_index]->eta() << "  "  << muon->eta() 
+                          << "   " << KeepMuonRefVec[mu_index]->phi() << "  "  << muon->phi() << std::endl;
        }
        tree_hscp_muon_idx[tree_hscp]=mu_index;
 
