@@ -60,13 +60,24 @@
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
 
+#include "FWCore/Common/interface/TriggerNames.h"
+#include "DataFormats/Common/interface/TriggerResults.h"
+
+#include "DataFormats/Scalers/interface/LumiScalers.h"
+#include "DataFormats/Luminosity/interface/LumiDetails.h"
+
+
 #include "HSCP_codeFromAnalysis.h"
+#include "HSCP_Analysis_TOFUtility.h"
+#include "DataFormats/CSCRecHit/interface/CSCSegmentCollection.h"
+#include "DataFormats/DTRecHit/interface/DTRecSegment4DCollection.h"
 
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCParticle.h"
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCPIsolation.h"
 
 #include "TH1.h"
 #include <TTree.h>
+#include <string.h>
 //
 // class declaration
 //
@@ -107,7 +118,10 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        edm::EDGetTokenT<reco::TrackCollection>  m_tracksTag;
        edm::EDGetTokenT<std::vector<pat::IsolatedTrack>>  m_isotracksTag;
        edm::EDGetTokenT< susybsm::HSCParticleCollection  > m_hscpcand;
-       edm::EDGetTokenT< susybsm::HSCPIsolationValueMap  > m_hscpiso;
+       edm::EDGetTokenT< susybsm::HSCPIsolationValueMap  > m_hscpiso0;
+       edm::EDGetTokenT< susybsm::HSCPIsolationValueMap  > m_hscpiso1;
+       edm::EDGetTokenT< susybsm::HSCPIsolationValueMap  > m_hscpiso2;
+       edm::EDGetTokenT< susybsm::HSCPIsolationValueMap  > m_hscpiso3;
 //       edm::EDGetTokenT<std::vector<reco::PFCandidate> >  m_tracksMiniAOD;
        edm::EDGetTokenT<reco::DeDxHitInfoAss>   m_dedxTag;
        edm::EDGetTokenT<edm::Association<std::vector<reco::DeDxHitInfo> > >  m_dedxMiniTag;
@@ -118,11 +132,17 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        edm::EDGetTokenT<reco::MuonTimeExtraMap>  m_muontimecb;
        edm::EDGetTokenT<reco::MuonTimeExtraMap>  m_muontimedt;
        edm::EDGetTokenT<reco::MuonTimeExtraMap>  m_muontimecsc;
+       edm::EDGetTokenT<edm::TriggerResults> triggerBits_;
+       edm::EDGetTokenT<LumiScalersCollection> m_lumiScalerTag;
+       edm::EDGetTokenT<CSCSegmentCollection>  m_cscSegments;
+       edm::EDGetTokenT<DTRecSegment4DCollection>  m_dt4DSegments;
 
 
 //       edm::EDGetTokenT< edm::ValueMap<reco::DeDxData> > dEdxTrackToken_;
 
        bool m_runOnGS;
+       bool m_isdata;
+       int  i_year;
        int printOut_;
 //       edm::InputTag trackTags_; //used to select what tracks to read from configuration file
 //
@@ -137,12 +157,26 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        TH3F* dEdxTemplatesUncorr = NULL;
        TH3F* dEdxTemplatesCorr = NULL;
 
+       bool m_doRecomputeMuTim;
+       muonTimingCalculator tofCalculator;
+       int CurrentRun = 0;
+
 
 //       TH1D * histo; 
        TTree *smalltree;
        int      tree_runNumber ;
-       int      tree_event ;
+       uint32_t      tree_event ;
        int      tree_npv;
+       int      tree_ngoodpv;
+
+       bool     tree_boolhlt_mu45;
+       bool     tree_boolhlt_mu50;
+       bool     tree_boolhlt_mu100;
+       bool     tree_boolhlt_old100;
+       bool     tree_boolhlt_pfmet_mht;
+       bool     tree_boolhlt_pfmet;
+
+       float    tree_InstLumi;
 
        int      tree_genpart;
        int      tree_gen_pdg[nMaxGen];
@@ -170,6 +204,8 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        float    tree_track_validfrac[nMaxTrack];
        float    tree_track_validlast[nMaxTrack];
        int      tree_track_qual[nMaxTrack];
+       float    tree_track_dz[nMaxTrack];
+       float    tree_track_dxy[nMaxTrack];
 //       float    tree_track_dedx_harmonic2[nMaxTrack];
        int      tree_track_index_hit[nMaxTrack];
        int      tree_track_nhits[nMaxTrack];
@@ -237,6 +273,10 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        float    tree_muon_p[nMaxMuon];
        float    tree_muon_eta[nMaxMuon];
        float    tree_muon_phi[nMaxMuon];
+       bool     tree_muon_isMatchesValid[nMaxMuon];
+       bool     tree_muon_isTrackerMuon[nMaxMuon];
+       bool     tree_muon_isGlobalMuon[nMaxMuon];
+
        float    tree_muon_comb_inversebeta[nMaxMuon];
        float    tree_muon_comb_inversebetaerr[nMaxMuon];
        int      tree_muon_comb_tofndof[nMaxMuon];
@@ -249,15 +289,36 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        float    tree_muon_csc_inversebetaerr[nMaxMuon];
        int      tree_muon_csc_tofndof[nMaxMuon];
        float    tree_muon_csc_vertextime[nMaxMuon];
+       float    tree_muon_newcomb_inversebeta[nMaxMuon];
+       float    tree_muon_newcomb_inversebetaerr[nMaxMuon];
+       int      tree_muon_newcomb_tofndof[nMaxMuon];
+       float    tree_muon_newcomb_vertextime[nMaxMuon];
+       float    tree_muon_newdt_inversebeta[nMaxMuon];
+       float    tree_muon_newdt_inversebetaerr[nMaxMuon];
+       int      tree_muon_newdt_tofndof[nMaxMuon];
+       float    tree_muon_newdt_vertextime[nMaxMuon];
+       float    tree_muon_newcsc_inversebeta[nMaxMuon];
+       float    tree_muon_newcsc_inversebetaerr[nMaxMuon];
+       int      tree_muon_newcsc_tofndof[nMaxMuon];
+       float    tree_muon_newcsc_vertextime[nMaxMuon];
 
        int      tree_hscp ;
        int      tree_hscp_gen_id[nMaxHSCP];
        float    tree_hscp_gen_dr[nMaxHSCP];
        int      tree_hscp_track_idx[nMaxHSCP];
        int      tree_hscp_muon_idx[nMaxHSCP];
-       float    tree_hscp_iso_tk[nMaxHSCP];
-       float    tree_hscp_iso_ecal[nMaxHSCP];
-       float    tree_hscp_iso_hcal[nMaxHSCP];
+       float    tree_hscp_iso0_tk[nMaxHSCP];
+       float    tree_hscp_iso0_ecal[nMaxHSCP];
+       float    tree_hscp_iso0_hcal[nMaxHSCP];
+       float    tree_hscp_iso1_tk[nMaxHSCP];
+       float    tree_hscp_iso1_ecal[nMaxHSCP];
+       float    tree_hscp_iso1_hcal[nMaxHSCP];
+       float    tree_hscp_iso2_tk[nMaxHSCP];
+       float    tree_hscp_iso2_ecal[nMaxHSCP];
+       float    tree_hscp_iso2_hcal[nMaxHSCP];
+       float    tree_hscp_iso3_tk[nMaxHSCP];
+       float    tree_hscp_iso3_ecal[nMaxHSCP];
+       float    tree_hscp_iso3_hcal[nMaxHSCP];
 
 
 };
@@ -282,12 +343,17 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
 */
 {
    m_format   = iConfig.getParameter<std::string>("format_file");
+   m_isdata = iConfig.getParameter<bool>("isdata");
+   i_year = iConfig.getUntrackedParameter<int>("year");
    m_primaryVertexTag   = consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("primaryVertexColl"));
    m_tracksTag = consumes<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("tracks"));
    m_isotracksTag = consumes<std::vector<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("isotracks"));
 //   m_tracksMiniAOD = consumes<std::vector<reco::PFCandidate> >(iConfig.getParameter<edm::InputTag>("PFCand"));
    m_hscpcand = consumes<susybsm::HSCParticleCollection >(iConfig.getParameter<edm::InputTag>("collectionHSCP"));
-   m_hscpiso = consumes< susybsm::HSCPIsolationValueMap  >(iConfig.getParameter<edm::InputTag>("isoHSCP"));
+   m_hscpiso0 = consumes< susybsm::HSCPIsolationValueMap  >(iConfig.getParameter<edm::InputTag>("isoHSCP0"));
+   m_hscpiso1 = consumes< susybsm::HSCPIsolationValueMap  >(iConfig.getParameter<edm::InputTag>("isoHSCP1"));
+   m_hscpiso2 = consumes< susybsm::HSCPIsolationValueMap  >(iConfig.getParameter<edm::InputTag>("isoHSCP2"));
+   m_hscpiso3 = consumes< susybsm::HSCPIsolationValueMap  >(iConfig.getParameter<edm::InputTag>("isoHSCP3"));
    m_dedxTag = consumes<reco::DeDxHitInfoAss>(iConfig.getParameter<edm::InputTag>("dedx"));
    m_dedxMiniTag = consumes<edm::Association<std::vector<reco::DeDxHitInfo> >>(iConfig.getParameter<edm::InputTag>("MiniDedx"));
    m_dedxPrescaleTag = consumes<edm::ValueMap<int>>(iConfig.getParameter<edm::InputTag>("dEdxHitInfoPrescale"));
@@ -305,13 +371,25 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
 //   dEdxTrackToken_ = consumes<edm::ValueMap<reco::DeDxData> >(edm::InputTag("dedxHarmonic2"));
 
    //loadDeDxTemplates
-   dEdxTemplatesUncorr = loadDeDxTemplate ("/opt/sbg/data/safe1/cms/ccollard/HSCP/CMSSW_9_4_3/src/stage/ntuple/test/minbias_template_uncorr_iter1.root", true);
-   dEdxTemplatesCorr = loadDeDxTemplate ("/opt/sbg/data/safe1/cms/ccollard/HSCP/CMSSW_9_4_3/src/stage/ntuple/test/minbias_template_corr_iter1.root", true);
+   dEdxTemplatesUncorr = loadDeDxTemplate ("minbias_template_uncorr_iter1.root", true);
+   dEdxTemplatesCorr = loadDeDxTemplate ("minbias_template_corr_iter1.root", true);
+//   dEdxTemplatesUncorr = loadDeDxTemplate ("/opt/sbg/cms/safe1/cms/ccollard/HSCP/CMSSW_9_4_3/src/stage/ntuple/test/minbias_template_uncorr_iter1.root", true);
+//   dEdxTemplatesCorr = loadDeDxTemplate ("/opt/sbg/cms/safe1/cms/ccollard/HSCP/CMSSW_9_4_3/src/stage/ntuple/test/minbias_template_corr_iter1.root", true);
    m_muonTag = consumes<reco::MuonCollection>(iConfig.getParameter<edm::InputTag>("muons"));
    m_muontimecb = consumes< reco::MuonTimeExtraMap >(iConfig.getParameter<edm::InputTag>("muonTOF"));
    m_muontimedt = consumes< reco::MuonTimeExtraMap >(iConfig.getParameter<edm::InputTag>("muonTDT"));
    m_muontimecsc = consumes< reco::MuonTimeExtraMap >(iConfig.getParameter<edm::InputTag>("muonTCSC"));
+   triggerBits_   = consumes<edm::TriggerResults>(edm::InputTag(std::string("TriggerResults"),std::string(""),std::string("HLT")));
+   m_lumiScalerTag = consumes<LumiScalersCollection>(iConfig.getParameter<edm::InputTag>("lumiScalerTag"));
+   m_doRecomputeMuTim  = iConfig.getParameter<bool>("doRecomputeMuTim");
+   m_cscSegments = consumes<CSCSegmentCollection>(iConfig.getParameter<edm::InputTag>("cscSegments"));
+   m_dt4DSegments = consumes<DTRecSegment4DCollection>(iConfig.getParameter<edm::InputTag>("dt4DSegments"));
 
+
+   if (m_doRecomputeMuTim) {
+    moduleGeom::loadGeometry("CMS_GeomTree.root");
+    tofCalculator.loadTimeOffset("MuonTimeOffset.txt");
+   }
 
    //now do what ever initialization is needed
    usesResource("TFileService");
@@ -322,7 +400,16 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    smalltree -> Branch ( "runNumber", &tree_runNumber ) ;
    smalltree -> Branch ( "event",     &tree_event ) ;
    smalltree -> Branch ( "npv",     &tree_npv ) ;
+   smalltree -> Branch ( "ngoodpv",     &tree_ngoodpv ) ;
 
+   smalltree -> Branch ( "hlt_mu45",     &tree_boolhlt_mu45 ) ;
+   smalltree -> Branch ( "hlt_mu50",     &tree_boolhlt_mu50 ) ;
+   smalltree -> Branch ( "hlt_tkmu100",  &tree_boolhlt_mu100 ) ;
+   smalltree -> Branch ( "hlt_oldmu100", &tree_boolhlt_old100 ) ;
+   smalltree -> Branch ( "hlt_pfmet_mht",&tree_boolhlt_pfmet_mht ) ;
+   smalltree -> Branch ( "hlt_pfmet",&tree_boolhlt_pfmet ) ;
+
+   smalltree -> Branch ( "InstLumi"   , &tree_InstLumi);
 
    smalltree -> Branch ( "ngenpart",  &tree_genpart) ;
    smalltree -> Branch ( "gen_pdg",   tree_gen_pdg,    "gen_pdg[ngenpart]/I");
@@ -351,6 +438,8 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    smalltree -> Branch ( "track_validfraction",  tree_track_validfrac,      "track_validfraction[ntracks]/F" );
    smalltree -> Branch ( "track_validlast",      tree_track_validlast,      "track_validlast[ntracks]/F" );
    smalltree -> Branch ( "track_qual",           tree_track_qual,           "track_qual[ntracks]/I" );
+   smalltree -> Branch ( "track_dz",             tree_track_dz,             "track_dz[ntracks]/F" );
+   smalltree -> Branch ( "track_dxy",            tree_track_dxy,            "track_dxy[ntracks]/F" );
 //   smalltree -> Branch ( "track_dedx_harmonic2", tree_track_dedx_harmonic2, "track_dedx_harmonic2[ntracks]/F" );
    smalltree -> Branch ( "track_index_hit",      tree_track_index_hit,      "track_index_hit[ntracks]/I" );
    smalltree -> Branch ( "track_nhits",          tree_track_nhits,          "track_nhits[ntracks]/I"  );
@@ -419,27 +508,51 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    smalltree -> Branch ( "muon_p",              tree_muon_p,              "muon_p[nmuons]/F"  );
    smalltree -> Branch ( "muon_eta",            tree_muon_eta,            "muon_eta[nmuons]/F" );
    smalltree -> Branch ( "muon_phi",            tree_muon_phi,            "muon_phi[nmuons]/F" );
+   smalltree -> Branch ( "muon_isMatchesValid",      tree_muon_isMatchesValid,      "muon_isMatchesValid[nmuons]/O" );
+   smalltree -> Branch ( "muon_isTrackerMuon",       tree_muon_isTrackerMuon,       "muon_isTrackerMuon[nmuons]/O" );
+   smalltree -> Branch ( "muon_isGlobalMuon",        tree_muon_isGlobalMuon,        "muon_isGlobalMuon[nmuons]/O" );
    smalltree -> Branch ( "muon_comb_inversebeta",    tree_muon_comb_inversebeta,    "muon_comb_inversebeta[nmuons]/F" );
    smalltree -> Branch ( "muon_comb_inversebetaerr", tree_muon_comb_inversebetaerr, "muon_comb_inversebetaerr[nmuons]/F" );
    smalltree -> Branch ( "muon_comb_tofndof",        tree_muon_comb_tofndof,        "muon_comb_tofndof[nmuons]/I" );
-   smalltree -> Branch ( "muon_comb_vertextime",     tree_muon_comb_vertextime,     "muon_comb_vertextime[nmuons]/I" );
+   smalltree -> Branch ( "muon_comb_vertextime",     tree_muon_comb_vertextime,     "muon_comb_vertextime[nmuons]/F" );
    smalltree -> Branch ( "muon_dt_inversebeta",      tree_muon_dt_inversebeta,      "muon_dt_inversebeta[nmuons]/F" );
    smalltree -> Branch ( "muon_dt_inversebetaerr",   tree_muon_dt_inversebetaerr,   "muon_dt_inversebetaerr[nmuons]/F" );
    smalltree -> Branch ( "muon_dt_tofndof",          tree_muon_dt_tofndof,          "muon_dt_tofndof[nmuons]/I" );
-   smalltree -> Branch ( "muon_dt_vertextime",       tree_muon_dt_vertextime,       "muon_dt_vertextime[nmuons]/I" );
+   smalltree -> Branch ( "muon_dt_vertextime",       tree_muon_dt_vertextime,       "muon_dt_vertextime[nmuons]/F" );
    smalltree -> Branch ( "muon_csc_inversebeta",     tree_muon_csc_inversebeta,     "muon_csc_inversebeta[nmuons]/F" );
    smalltree -> Branch ( "muon_csc_inversebetaerr",  tree_muon_csc_inversebetaerr,  "muon_csc_inversebetaerr[nmuons]/F" );
    smalltree -> Branch ( "muon_csc_tofndof",         tree_muon_csc_tofndof,         "muon_csc_tofndof[nmuons]/I" );
-   smalltree -> Branch ( "muon_csc_vertextime",      tree_muon_csc_vertextime,      "muon_csc_vertextime[nmuons]/I" );
+   smalltree -> Branch ( "muon_csc_vertextime",      tree_muon_csc_vertextime,      "muon_csc_vertextime[nmuons]/F" );
+   smalltree -> Branch ( "muon_newcomb_inversebeta",    tree_muon_newcomb_inversebeta,    "muon_newcomb_inversebeta[nmuons]/F" );
+   smalltree -> Branch ( "muon_newcomb_inversebetaerr", tree_muon_newcomb_inversebetaerr, "muon_newcomb_inversebetaerr[nmuons]/F" );
+   smalltree -> Branch ( "muon_newcomb_tofndof",        tree_muon_newcomb_tofndof,        "muon_newcomb_tofndof[nmuons]/I" );
+   smalltree -> Branch ( "muon_newcomb_vertextime",     tree_muon_newcomb_vertextime,     "muon_newcomb_vertextime[nmuons]/F" );
+   smalltree -> Branch ( "muon_newdt_inversebeta",      tree_muon_newdt_inversebeta,      "muon_newdt_inversebeta[nmuons]/F" );
+   smalltree -> Branch ( "muon_newdt_inversebetaerr",   tree_muon_newdt_inversebetaerr,   "muon_newdt_inversebetaerr[nmuons]/F" );
+   smalltree -> Branch ( "muon_newdt_tofndof",          tree_muon_newdt_tofndof,          "muon_newdt_tofndof[nmuons]/I" );
+   smalltree -> Branch ( "muon_newdt_vertextime",       tree_muon_newdt_vertextime,       "muon_newdt_vertextime[nmuons]/F" );
+   smalltree -> Branch ( "muon_newcsc_inversebeta",     tree_muon_newcsc_inversebeta,     "muon_newcsc_inversebeta[nmuons]/F" );
+   smalltree -> Branch ( "muon_newcsc_inversebetaerr",  tree_muon_newcsc_inversebetaerr,  "muon_newcsc_inversebetaerr[nmuons]/F" );
+   smalltree -> Branch ( "muon_newcsc_tofndof",         tree_muon_newcsc_tofndof,         "muon_newcsc_tofndof[nmuons]/I" );
+   smalltree -> Branch ( "muon_newcsc_vertextime",      tree_muon_newcsc_vertextime,      "muon_newcsc_vertextime[nmuons]/F" );
 
    smalltree -> Branch ( "nhscp",              &tree_hscp ) ;
    smalltree -> Branch ( "hscp_gen_id",        tree_hscp_gen_id,             "hscp_gen_id[nhscp]/I" );
    smalltree -> Branch ( "hscp_gen_dr",        tree_hscp_gen_dr,             "hscp_gen_dr[nhscp]/F" );
    smalltree -> Branch ( "hscp_track_idx",     tree_hscp_track_idx,          "hscp_track_idx[nhscp]/I" );
    smalltree -> Branch ( "hscp_muon_idx",      tree_hscp_muon_idx,           "hscp_muon_idx[nhscp]/I" );
-   smalltree -> Branch ( "hscp_iso_tk",        tree_hscp_iso_tk,             "hscp_iso_tk[nhscp]/F" );
-   smalltree -> Branch ( "hscp_iso_ecal",      tree_hscp_iso_ecal,           "hscp_iso_ecal[nhscp]/F" );
-   smalltree -> Branch ( "hscp_iso_hcal",      tree_hscp_iso_hcal,           "hscp_iso_hcal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso0_tk",        tree_hscp_iso0_tk,             "hscp_iso0_tk[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso0_ecal",      tree_hscp_iso0_ecal,           "hscp_iso0_ecal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso0_hcal",      tree_hscp_iso0_hcal,           "hscp_iso0_hcal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso1_tk",        tree_hscp_iso1_tk,             "hscp_iso1_tk[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso1_ecal",      tree_hscp_iso1_ecal,           "hscp_iso1_ecal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso1_hcal",      tree_hscp_iso1_hcal,           "hscp_iso1_hcal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso2_tk",        tree_hscp_iso2_tk,             "hscp_iso2_tk[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso2_ecal",      tree_hscp_iso2_ecal,           "hscp_iso2_ecal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso2_hcal",      tree_hscp_iso2_hcal,           "hscp_iso2_hcal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso3_tk",        tree_hscp_iso3_tk,             "hscp_iso3_tk[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso3_ecal",      tree_hscp_iso3_ecal,           "hscp_iso3_ecal[nhscp]/F" );
+   smalltree -> Branch ( "hscp_iso3_hcal",      tree_hscp_iso3_hcal,           "hscp_iso3_hcal[nhscp]/F" );
 }
 
 
@@ -470,10 +583,72 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     tree_runNumber = myEvId.run();
     tree_event = myEvId.event();
 
+    if (m_doRecomputeMuTim) {
+      if (printOut_ > 0) std::cout << "CurrentRun " << CurrentRun << " evt " << tree_event << std::endl;
+      if (CurrentRun != tree_runNumber) {
+       if (printOut_ > 0) std::cout << "new CurrentRun " << std::endl;
+       CurrentRun = tree_runNumber;
+       tofCalculator.setRun(CurrentRun);
+       if (printOut_ > 0) std::cout << "apres le setRun tofCalculator "<< std::endl;
+      }
+    }
     
     edm::Handle<reco::VertexCollection> primaryVertex ;
     iEvent.getByToken(m_primaryVertexTag,primaryVertex);
     tree_npv = primaryVertex->size();
+    const std::vector<reco::Vertex>& vertexColl = *primaryVertex;
+    int goodVerts=0;
+    bool firstpvfound=false;
+    int index_pv=-1;
+    for(unsigned int i=0;i<vertexColl.size();i++){
+      if(vertexColl[i].isFake() || fabs(vertexColl[i].z())>24 || vertexColl[i].position().rho()>2 || vertexColl[i].ndof()<=4)continue; //only consider good vertex
+      if(!firstpvfound) {
+          firstpvfound=true;
+          index_pv=i;
+      }
+      goodVerts++;
+    }
+    tree_ngoodpv = goodVerts;
+
+    // Triggers
+    edm::Handle<edm::TriggerResults> triggerBits;
+    iEvent.getByToken(triggerBits_,triggerBits);
+    const edm::TriggerNames &names = iEvent.triggerNames(*triggerBits);
+
+    tree_boolhlt_mu45=false;
+    tree_boolhlt_mu50=false;
+    tree_boolhlt_mu100=false;
+    tree_boolhlt_old100=false;
+    tree_boolhlt_pfmet_mht=false;
+    tree_boolhlt_pfmet=false;
+    for (unsigned int i = 0, n = triggerBits->size(); i < n; ++i)
+    {
+//         std::string triggerNameHLT = names.triggerName(i);
+//         std::cout << "[" << i << "] " << (triggerBits->accept(i) ? "1" : "0") << "  " << names.triggerName(i)  << "     "   << strcmp(triggerNameHLT.c_str(),"HLT_Mu50_v7") 
+//                   <<  "       "   << TString(names.triggerName(i)).Contains("HLT_Mu50_v") << std::endl;
+           if (TString(names.triggerName(i)).Contains("HLT_Mu45_eta2p1") && triggerBits->accept(i))                 tree_boolhlt_mu45=true;
+           if (TString(names.triggerName(i)).Contains("HLT_Mu50_v") && triggerBits->accept(i))                      tree_boolhlt_mu50=true;
+           if (TString(names.triggerName(i)).Contains("HLT_PFMET120_PFMHT120_IDTight_v") && triggerBits->accept(i)) tree_boolhlt_pfmet_mht=true;
+           if (TString(names.triggerName(i)).Contains("HLT_OldMu100_") && triggerBits->accept(i))                   tree_boolhlt_old100=true;
+           if (TString(names.triggerName(i)).Contains("HLT_TkMu100_") && triggerBits->accept(i))                    tree_boolhlt_mu100=true;
+           if (TString(names.triggerName(i)).Contains("HLT_PFMET170_NoiseCleaned") && triggerBits->accept(i))       tree_boolhlt_pfmet=true;
+    }
+
+    tree_InstLumi=-1;
+    if (m_isdata && m_format != "miniAOD") {
+      if (!m_lumiScalerTag.isUninitialized()){
+        edm::Handle<LumiScalersCollection> lumiScaler;
+        iEvent.getByToken(m_lumiScalerTag, lumiScaler);
+
+        if (lumiScaler->begin() != lumiScaler->end())
+            tree_InstLumi= lumiScaler->begin()->instantLumi() ;
+      }
+      else
+      {
+          throw cms::Exception("CorruptData") <<
+            "[AdditionalEventInfo::produce] AdditionalEventInfo requires a valid LumiScalerCollecion InpuTag" << std::endl;
+      }
+    }
 
 
     edm::Handle<reco::TrackCollection> trackCollectionHandle;
@@ -505,12 +680,21 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     // inspired by SUSYBSMAnalysis/HSCP/test/AnalysisCode/Analysis_Step1_EventLoop.C
     edm::Handle<susybsm::HSCParticleCollection> hscpCollH;
-    edm::Handle<susybsm::HSCPIsolationValueMap> isoHSCPColl;
+    edm::Handle<susybsm::HSCPIsolationValueMap> isoHSCPColl0;
+    edm::Handle<susybsm::HSCPIsolationValueMap> isoHSCPColl1;
+    edm::Handle<susybsm::HSCPIsolationValueMap> isoHSCPColl2;
+    edm::Handle<susybsm::HSCPIsolationValueMap> isoHSCPColl3;
     if (m_format != "miniAOD" ) {
       iEvent.getByToken(m_hscpcand,hscpCollH);
       if(!hscpCollH.isValid()){printf("HSCParticle Collection NotFound\n");}
-      iEvent.getByToken(m_hscpiso,isoHSCPColl);
-      if(!isoHSCPColl.isValid()){printf("HSCPIsolation Collection NotFound\n");}
+      iEvent.getByToken(m_hscpiso0,isoHSCPColl0);
+      if(!isoHSCPColl0.isValid()){printf("HSCPIsolation Collection NotFound\n");}
+      iEvent.getByToken(m_hscpiso1,isoHSCPColl1);
+      if(!isoHSCPColl1.isValid()){printf("HSCPIsolation Collection NotFound\n");}
+      iEvent.getByToken(m_hscpiso2,isoHSCPColl2);
+      if(!isoHSCPColl2.isValid()){printf("HSCPIsolation Collection NotFound\n");}
+      iEvent.getByToken(m_hscpiso3,isoHSCPColl3);
+      if(!isoHSCPColl3.isValid()){printf("HSCPIsolation Collection NotFound\n");}
     }
 
 
@@ -538,6 +722,15 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     if (m_format != "miniAOD" ) {
      iEvent.getByToken(m_muontimecsc,TOFCSCCollH);
      if (!TOFCSCCollH.isValid()) std::cout << " access problem to CSC TOF collection " << std::endl;
+    }
+
+    edm::Handle<CSCSegmentCollection> CSCSegmentCollHandle;
+    edm::Handle<DTRecSegment4DCollection> DTSegmentCollHandle;
+    if (m_format != "miniAOD" && m_doRecomputeMuTim) {
+       iEvent.getByToken(m_cscSegments, CSCSegmentCollHandle);
+       if(!CSCSegmentCollHandle.isValid())  std::cout << "CSC Segment Collection not found!" << std::endl;
+       iEvent.getByToken(m_dt4DSegments, DTSegmentCollHandle);
+       if(!DTSegmentCollHandle.isValid()) std::cout << "DT Segment Collection not found!" << std::endl; 
     }
 
 
@@ -607,12 +800,13 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     // https://github.com/CMS-HSCP/SUSYBSMAnalysis-HSCP/blob/master/plugins/BigNtuplizer.cc
     
     tree_genpart=0;
-//    if (m_runOnGS) {
+    int n_genp = 0;
     edm::Handle< std::vector<reco::GenParticle> > GenColl;
+    if (!m_isdata) {
     iEvent.getByToken(genParticlesToken_, GenColl);
 
 
-    int n_genp = GenColl->size();
+    n_genp = GenColl->size();
     if (n_genp>0) {
      for(int i=0;i< n_genp ;++i){
       const reco::GenParticle* genCand = &(*GenColl)[i];
@@ -647,7 +841,7 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       }
      }
     } // if n_genp
-//    } // if runOnGS
+    } // if isdaya
 
      //
     tree_ntracks=0;
@@ -680,6 +874,8 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       float frac_tr=-1;
       float frac2_tr=-1;
       int qual_tr=0;
+      float dz_tr=-1000;
+      float dxy_tr=-1000;
       const reco::DeDxHitInfo* dedxHits = nullptr;
       reco::DeDxHitInfoRef dedxHitsRef;
 
@@ -699,7 +895,11 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
           nmisstilL_tr=track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS) + track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);
           frac_tr=track->validFraction();
           frac2_tr=track->found()<=0?-1:track->found() / float(track->found() + nmisstilL_tr);
-          qual_tr=track->qualityMask();
+          qual_tr=track->qualityMask(); // >=2 = (2 meaning HighPurity tracks)
+          if (index_pv>-1) {
+          dz_tr=track->dz(vertexColl[index_pv].position());
+          dxy_tr=track->dxy(vertexColl[index_pv].position());
+          }
           dedxHitsRef = dedxCollH->get(track.key());
           if(!dedxHitsRef.isNull())dedxHits = &(*dedxHitsRef);
           if(!dedxHitsRef.isNull() && tree_ntracks < nMaxTrack) KeepTrackRefVec.push_back(track);
@@ -748,12 +948,14 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        tree_track_validfrac[tree_ntracks]= frac_tr;
        tree_track_validlast[tree_ntracks]= frac2_tr;
        tree_track_qual[tree_ntracks]= qual_tr;
+       tree_track_dz[tree_ntracks]= dz_tr;
+       tree_track_dxy[tree_ntracks]= dxy_tr;
 
 
        //load dEdx informations
        if(!dedxHits)continue;
 
-       if (m_format != "miniAOD" ) {  // AOD on RECO General Tracks
+       if (m_format != "miniAOD" && i_year!=2016 ) {  // AOD on RECO General Tracks starting in 2017
         tree_track_prescale[tree_ntracks] = (*dedxHitInfoPrescale)[dedxHitsRef];
        }
        else {
@@ -1071,6 +1273,9 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        tree_muon_p[tree_nmuons]= muon->p();
        tree_muon_eta[tree_nmuons]= muon->eta();
        tree_muon_phi[tree_nmuons]= muon->phi();
+       tree_muon_isMatchesValid[tree_nmuons]= muon->isMatchesValid();
+       tree_muon_isTrackerMuon[tree_nmuons]=  muon->isTrackerMuon();
+       tree_muon_isGlobalMuon[tree_nmuons]=  muon->isGlobalMuon();
 
        const reco::MuonTimeExtra* tof = NULL;
        const reco::MuonTimeExtra* dttof = NULL;
@@ -1114,6 +1319,49 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        tree_muon_csc_inversebetaerr[tree_nmuons] = -10;
        tree_muon_csc_tofndof[tree_nmuons] = 0;
        tree_muon_csc_vertextime[tree_nmuons] = -10;
+       }
+
+       if (m_doRecomputeMuTim &&  muon->isStandAloneMuon() ) {
+            const reco::MuonTimeExtra* newtof = NULL;
+            const reco::MuonTimeExtra* newdttof = NULL;
+            const reco::MuonTimeExtra* newcsctof = NULL;
+            const CSCSegmentCollection& CSCSegmentColl = *CSCSegmentCollHandle;
+            const DTRecSegment4DCollection& DTSegmentColl = *DTSegmentCollHandle;
+            tofCalculator.computeTOF(muon, CSCSegmentColl, DTSegmentColl, m_isdata?1:0 );
+            newtof  = &tofCalculator.combinedTOF; newdttof = &tofCalculator.dtTOF;  newcsctof = &tofCalculator.cscTOF;
+            if (TOFCollH.isValid()) {
+             if (printOut_ > 0) std::cout << " working ? " << newtof->inverseBeta() << " vs old one " << tof->inverseBeta() << std::endl;
+             if (printOut_ > 0) std::cout << " and for dt/csc : " << newdttof->inverseBeta() << " " << newcsctof->inverseBeta() <<std::endl;
+            }
+            else {
+             if (printOut_ > 0) std::cout << " working ? " << newtof->inverseBeta() <<  std::endl;
+            }
+            tree_muon_newcomb_inversebeta[tree_nmuons] = newtof->inverseBeta();
+            tree_muon_newcomb_inversebetaerr[tree_nmuons] = newtof->inverseBetaErr();
+            tree_muon_newcomb_tofndof[tree_nmuons] = newtof->nDof();
+            tree_muon_newcomb_vertextime[tree_nmuons] = newtof->timeAtIpInOut();
+            tree_muon_newdt_inversebeta[tree_nmuons] = newdttof->inverseBeta();
+            tree_muon_newdt_inversebetaerr[tree_nmuons] = newdttof->inverseBetaErr();
+            tree_muon_newdt_tofndof[tree_nmuons] = newdttof->nDof();
+            tree_muon_newdt_vertextime[tree_nmuons] = newdttof->timeAtIpInOut();
+            tree_muon_newcsc_inversebeta[tree_nmuons] = newcsctof->inverseBeta();
+            tree_muon_newcsc_inversebetaerr[tree_nmuons] = newcsctof->inverseBetaErr();
+            tree_muon_newcsc_tofndof[tree_nmuons] = newcsctof->nDof();
+            tree_muon_newcsc_vertextime[tree_nmuons] = newcsctof->timeAtIpInOut();
+       }
+       else {
+            tree_muon_newcomb_inversebeta[tree_nmuons] = -10;
+            tree_muon_newcomb_inversebetaerr[tree_nmuons] = -10;
+            tree_muon_newcomb_tofndof[tree_nmuons] = 0;
+            tree_muon_newcomb_vertextime[tree_nmuons] = -10;
+            tree_muon_newdt_inversebeta[tree_nmuons] = -10;
+            tree_muon_newdt_inversebetaerr[tree_nmuons] = -10;
+            tree_muon_newdt_tofndof[tree_nmuons] = 0;
+            tree_muon_newdt_vertextime[tree_nmuons] = -10;
+            tree_muon_newcsc_inversebeta[tree_nmuons] = -10;
+            tree_muon_newcsc_inversebetaerr[tree_nmuons] = -10;
+            tree_muon_newcsc_tofndof[tree_nmuons] = 0;
+            tree_muon_newcsc_vertextime[tree_nmuons] = -10;
        }
        tree_nmuons++;
 
@@ -1200,19 +1448,61 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        tree_hscp_muon_idx[tree_hscp]=mu_index;
 
 
-       if (!track.isNull() && isoHSCPColl.isValid()) {
-           const ValueMap<susybsm::HSCPIsolation>& IsolationMap = *isoHSCPColl.product();
+       if (!track.isNull() && isoHSCPColl0.isValid()) {
+           const ValueMap<susybsm::HSCPIsolation>& IsolationMap = *isoHSCPColl0.product();
            susybsm::HSCPIsolation hscpIso = IsolationMap.get((size_t)track.key());   
            if (printOut_ > 0) std::cout << "HSCP iso " << hscpIso.Get_TK_SumEt() << "  "  << hscpIso.Get_ECAL_Energy() 
                                         << "     "  << hscpIso.Get_HCAL_Energy() << "  for HSCP p " << track->p()  << std::endl;
-           tree_hscp_iso_tk[tree_hscp]=hscpIso.Get_TK_SumEt();
-           tree_hscp_iso_ecal[tree_hscp]=hscpIso.Get_ECAL_Energy();
-           tree_hscp_iso_hcal[tree_hscp]=hscpIso.Get_HCAL_Energy();
+           tree_hscp_iso0_tk[tree_hscp]=hscpIso.Get_TK_SumEt();
+           tree_hscp_iso0_ecal[tree_hscp]=hscpIso.Get_ECAL_Energy();
+           tree_hscp_iso0_hcal[tree_hscp]=hscpIso.Get_HCAL_Energy();
        }
        else {
-           tree_hscp_iso_tk[tree_hscp]=-10;
-           tree_hscp_iso_ecal[tree_hscp]=-10;
-           tree_hscp_iso_hcal[tree_hscp]=-10;
+           tree_hscp_iso0_tk[tree_hscp]=-10;
+           tree_hscp_iso0_ecal[tree_hscp]=-10;
+           tree_hscp_iso0_hcal[tree_hscp]=-10;
+       }
+       if (!track.isNull() && isoHSCPColl1.isValid()) {
+           const ValueMap<susybsm::HSCPIsolation>& IsolationMap = *isoHSCPColl1.product();
+           susybsm::HSCPIsolation hscpIso = IsolationMap.get((size_t)track.key());   
+           if (printOut_ > 0) std::cout << "HSCP iso " << hscpIso.Get_TK_SumEt() << "  "  << hscpIso.Get_ECAL_Energy() 
+                                        << "     "  << hscpIso.Get_HCAL_Energy() << "  for HSCP p " << track->p()  << std::endl;
+           tree_hscp_iso1_tk[tree_hscp]=hscpIso.Get_TK_SumEt();
+           tree_hscp_iso1_ecal[tree_hscp]=hscpIso.Get_ECAL_Energy();
+           tree_hscp_iso1_hcal[tree_hscp]=hscpIso.Get_HCAL_Energy();
+       }
+       else {
+           tree_hscp_iso1_tk[tree_hscp]=-10;
+           tree_hscp_iso1_ecal[tree_hscp]=-10;
+           tree_hscp_iso1_hcal[tree_hscp]=-10;
+       }
+       if (!track.isNull() && isoHSCPColl2.isValid()) {
+           const ValueMap<susybsm::HSCPIsolation>& IsolationMap = *isoHSCPColl2.product();
+           susybsm::HSCPIsolation hscpIso = IsolationMap.get((size_t)track.key());   
+           if (printOut_ > 0) std::cout << "HSCP iso " << hscpIso.Get_TK_SumEt() << "  "  << hscpIso.Get_ECAL_Energy() 
+                                        << "     "  << hscpIso.Get_HCAL_Energy() << "  for HSCP p " << track->p()  << std::endl;
+           tree_hscp_iso2_tk[tree_hscp]=hscpIso.Get_TK_SumEt();
+           tree_hscp_iso2_ecal[tree_hscp]=hscpIso.Get_ECAL_Energy();
+           tree_hscp_iso2_hcal[tree_hscp]=hscpIso.Get_HCAL_Energy();
+       }
+       else {
+           tree_hscp_iso2_tk[tree_hscp]=-10;
+           tree_hscp_iso2_ecal[tree_hscp]=-10;
+           tree_hscp_iso2_hcal[tree_hscp]=-10;
+       }
+       if (!track.isNull() && isoHSCPColl3.isValid()) {
+           const ValueMap<susybsm::HSCPIsolation>& IsolationMap = *isoHSCPColl3.product();
+           susybsm::HSCPIsolation hscpIso = IsolationMap.get((size_t)track.key());   
+           if (printOut_ > 0) std::cout << "HSCP iso " << hscpIso.Get_TK_SumEt() << "  "  << hscpIso.Get_ECAL_Energy() 
+                                        << "     "  << hscpIso.Get_HCAL_Energy() << "  for HSCP p " << track->p()  << std::endl;
+           tree_hscp_iso3_tk[tree_hscp]=hscpIso.Get_TK_SumEt();
+           tree_hscp_iso3_ecal[tree_hscp]=hscpIso.Get_ECAL_Energy();
+           tree_hscp_iso3_hcal[tree_hscp]=hscpIso.Get_HCAL_Energy();
+       }
+       else {
+           tree_hscp_iso3_tk[tree_hscp]=-10;
+           tree_hscp_iso3_ecal[tree_hscp]=-10;
+           tree_hscp_iso3_hcal[tree_hscp]=-10;
        }
 
 //       if(TypeMode!=3) track = hscp.trackRef();
