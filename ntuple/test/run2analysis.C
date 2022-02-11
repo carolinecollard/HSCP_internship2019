@@ -942,7 +942,7 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
       if (!dataFlag) runNumber = 300000;
 
 //      if (runNumber<305150 || runNumber>305300) continue;
-      if (runNumber>323232) continue;  // because 2018 is rereco at the moment --> remove this if when running on UL
+//      if (runNumber>323232) continue;  // because 2018 is rereco at the moment --> remove this if when running on UL
 
       // only Muon Trigger at the moment (because I am running on SingleMu data)
       if (!hlt_mu50 && !hlt_tkmu100 && !hlt_oldmu100) continue;
