@@ -19,7 +19,9 @@ enum TrackQuality {
       qualitySize = 8
     };
 
-bool writeTemplateOnDisk=false;
+bool writeTemplateOnDisk=true;
+bool computeSpecial= true;
+bool boolDeDxTemp= true;
 
 // Modification of the code in September 2021 to 
 // align it with the use of xtalk inversion (only for cluster cleaning) and saturation 
@@ -60,55 +62,158 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    double pi=acos(-1);
    double dEdxSF [2] = { 1., 1. };  // 0 : Strip SF, 1 : Pixel to Strip SF
 
+
    // values for 2017 UL data & MC
    if (dataFlag) {
+      if (year==2017) {
       dEdxSF[0]=1.;
       dEdxSF[1]=1.0325;
+      }
+      else if (year==2018) { 
+      dEdxSF[0]=1.;
+      dEdxSF[1]=1.0817;
+      }
+      else {
+         cout << " AIE AIE AIE : Year not well specified for dEdXSF in data !!!! " << endl;
+         return;
+      }
    }
    else {
-      dEdxSF[0]=1.0079;
-      dEdxSF[1]=1.0875;
+      if (year==2017) {
+        dEdxSF[0]=1.0079;
+        dEdxSF[1]=1.0875;
+      } 
+      else if (year==2018) {
+        dEdxSF[0]=1.0047;
+        dEdxSF[1]=1.1429;
+      }
+      else {
+         cout << " AIE AIE AIE : Year not well specified for dEdXSF in MC !!!! " << endl;
+         return;
+      }
    }
-   float Cval_ldstrip = 3.536;
-   float Kval_ldstrip = 2.155;
-   float Cval_ld =3.516 ;
-   float Kval_ld = 2.122;
-   float Cval_all = 3.286;
-   float Kval_all = 2.051;
-   // only *val_nol1* with new selection (feb 10 2022)
-   float Cval_nol1 = 3.31;
-   float Kval_nol1 = 2.14;
-   float Cval_nol1_2 = 3.21;
-   float Kval_nol1_2 = 2.18;
-   float Cval_nol1_3 = 2.88;
+   cout << "  dEdXSF : " << dEdxSF[0] << "   &   " << dEdxSF[1] << endl;
+
+   // update all on feb 25 (on jan21 rootfile)
+   // with Cval extracted on 3-5 
+   // MC 2017
+   float Kval_ld = 2.33;
+   float Cval_ld =3.37 ;
+   float Kval_ldstrip = 2.45;
+   float Cval_ldstrip = 3.41;
+   float Kval_all = 2.19;
+   float Cval_all = 3.18;
+
+   float Cval_nol1 = 3.31; // fit C in 5-25
+   float Kval_nol1 = 2.20; 
+   float Cval_nol1_2 = 3.22; // fit C in 3-5
+   float Kval_nol1_2 = 2.26;
+   float Cval_nol1_3 = 2.88; // with log term
    float Kval_nol1_3 = 2.57;
    float Nval_nol1_3 = 0.099;
-   float Cval_strip = 3.385;
-   float Kval_strip = 2.136;
-   float Cval_hdnol1 = 3.208; 
-   float Kval_hdnol1 = 2.013; 
-   float Cval_pix = 3.116;
-   float Kval_pix = 1.871;
-   float Cval_pixnol1 = 3.226;
-   float Kval_pixnol1 = 1.782;
+
+   float Kval_strip = 2.43;
+   float Cval_strip = 3.23;
+   float Kval_hdnol1 = 2.20; 
+   float Cval_hdnol1 = 3.07; 
+
+   float Kval_pix = 1.75;
+   float Cval_pix = 3.03;
+   float Kval_pixnol1 = 1.62;
+   float Cval_pixnol1 = 3.13;
+
    if (dataFlag) {
-     Cval_ldstrip = 3.444 ;
-     Kval_ldstrip = 2.298 ;
-     Cval_ld = 3.466 ;
-     Kval_ld = 2.190 ;
-     Cval_all = 3.190 ;
-     Kval_all = 2.123 ;
-     Cval_nol1 = 3.242 ;
-     Kval_nol1 = 2.173 ;
-     // not yet up-to-date...
-     Cval_strip = 3.242 ;
-     Kval_strip = 2.173 ;
-     Cval_hdnol1 = 3.242 ;
-     Kval_hdnol1 = 2.173 ;
-     Cval_pix = 3.242 ;
+    if (year==2017) {
+     // extracted on analysis_ul_2017_21jan.root
+     Kval_ld = 2.36 ;
+     Cval_ld = 3.37 ;
+     Kval_ldstrip = 2.58 ;
+     Cval_ldstrip = 3.37 ;
+     Kval_all = 2.19 ;
+     Cval_all = 3.10 ;
+
+     Cval_nol1 = 3.19 ; // fit C in 5-20
+     Kval_nol1 = 2.28 ;
+     Cval_nol1_2 = 3.17 ; // fit C in 3-5
+     Kval_nol1_2 = 2.30 ;
+     Cval_nol1_3 = 2.80 ;
+     Kval_nol1_3 = 2.83 ;
+     Nval_nol1_3 = 0.090 ;
+
+     Kval_strip = 2.50 ;
+     Cval_strip = 3.19 ;
+     Kval_hdnol1 = 2.23 ;
+     Cval_hdnol1 = 3.03 ;
+
+/* not possible to extract K and C values on the pixel only samples  ==> do not update and keep the MC values
      Kval_pix = 2.173 ;
-     Cval_pixnol1 = 3.242 ;
+     Cval_pix = 3.242 ;
      Kval_pixnol1 = 2.173 ;
+     Cval_pixnol1 = 3.242 ;
+*/
+    }
+    else if (year==2018) {
+     //extracted on analysis_ul_2018_28feb.root
+     Kval_ld = 2.35 ;
+     Cval_ld = 3.36 ;
+     Kval_ldstrip = 2.60 ;
+     Cval_ldstrip = 3.38 ;
+     Kval_all = 2.17 ;
+     Cval_all = 3.09 ;
+
+     Cval_nol1 = 3.18 ; // fit C in 5-20
+     Kval_nol1 = 2.25 ;
+     Cval_nol1_2 = 3.16 ; // fit C in 3-5
+     Kval_nol1_2 = 2.27 ;
+     Cval_nol1_3 = 2.90 ;
+     Kval_nol1_3 = 2.52 ;
+     Nval_nol1_3 = 0.066 ;
+
+     Kval_strip = 2.50 ;
+     Cval_strip = 3.19 ;
+     Kval_hdnol1 = 2.21 ;
+     Cval_hdnol1 = 3.02 ;
+
+// not possible to extract K and C values on the pixel only samples  ==> do not update and keep the MC values
+     Kval_pix = 1.72 ;
+     Cval_pix = 2.96 ;
+// MC 2018 not available 
+/*
+     Kval_pixnol1 = .. ;
+     Cval_pixnol1 = .. ;
+*/
+    }
+   }
+   else if (year==2018) {
+     // MC : extracted on analysis_ul_2018MC_w18_MC_28feb.root
+     Kval_ld = 2.34 ;
+     Cval_ld = 3.35 ;
+     Kval_ldstrip = 2.48 ;
+     Cval_ldstrip = 3.38 ;
+     Kval_all = 2.20 ;
+     Cval_all = 3.14 ;
+
+     Cval_nol1 = 3.29 ; // fit C in 5-20
+     Kval_nol1 = 2.22 ;
+     Cval_nol1_2 = 3.16 ; // fit C in 3-5
+     Kval_nol1_2 = 2.27 ;
+     Cval_nol1_3 = 2.86 ;
+     Kval_nol1_3 = 2.61 ;
+     Nval_nol1_3 = 0.103 ;
+
+     Kval_strip = 2.40 ;
+     Cval_strip = 3.21 ;
+     Kval_hdnol1 = 2.23 ;
+     Cval_hdnol1 = 3.05 ;
+
+// MC values : no convergence... oscillation between 1.64 and 1.72 for Kval_pix :(
+     Kval_pix = 1.72 ;
+     Cval_pix = 2.96 ;
+// MC values : not possible to fit --> K =1 at limit :(
+/*
+     Kval_pixnol1 = .. ;
+     Cval_pixnol1 = .. ;
+*/
    }
    bool blind_data= false;
    if (dataFlag)  blind_data=true;
@@ -297,6 +402,8 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    TH2D* ZooChargeVsRun_pixd1 = new TH2D("ZooChargeVsRun_pixd1","ChargeVsRun per layer",545, 271000,325500,90, 0., 4.5);
    TH2D* ZooChargeVsRun_pixd2 = new TH2D("ZooChargeVsRun_pixd2","ChargeVsRun per layer",545, 271000,325500,90, 0., 4.5);
    TH2D* ZooChargeVsRun_pixd3 = new TH2D("ZooChargeVsRun_pixd3","ChargeVsRun per layer",545, 271000,325500,90, 0., 4.5);
+   TH2D* ZooChargeVsRun_pixr1 = new TH2D("ZooChargeVsRun_pixr1","ChargeVsRun per layer",545, 271000,325500,90, 0., 4.5);
+   TH2D* ZooChargeVsRun_pixr2 = new TH2D("ZooChargeVsRun_pixr2","ChargeVsRun per layer",545, 271000,325500,90, 0., 4.5);
    TH2D* ZooChargeVsRun_tib1 = new TH2D("ZooChargeVsRun_tib1","ChargeVsRun per layer",545, 271000,325500,50, 2., 4.5);
    TH2D* ZooChargeVsRun_tib2 = new TH2D("ZooChargeVsRun_tib2","ChargeVsRun per layer",545, 271000,325500,50, 2., 4.5);
    TH2D* ZooChargeVsRun_tib3 = new TH2D("ZooChargeVsRun_tib3","ChargeVsRun per layer",545, 271000,325500,50, 2., 4.5);
@@ -332,6 +439,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    TH1D* HSCP_MassIh0noL1 = new TH1D("HSCP_MassIh0noL1", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
    TH1D* HSCP_MassIh0noL1_2 = new TH1D("HSCP_MassIh0noL1_2", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
    TH1D* HSCP_MassIh0noL1_3 = new TH1D("HSCP_MassIh0noL1_3", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_11 = new TH1D("HSCP_MassIh0noL1_11", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_12 = new TH1D("HSCP_MassIh0noL1_12", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_13 = new TH1D("HSCP_MassIh0noL1_13", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_1s1 = new TH1D("HSCP_MassIh0noL1_1s1", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_1s2 = new TH1D("HSCP_MassIh0noL1_1s2", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_1s3 = new TH1D("HSCP_MassIh0noL1_1s3", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_2s1 = new TH1D("HSCP_MassIh0noL1_2s1", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_2s2 = new TH1D("HSCP_MassIh0noL1_2s2", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_2s3 = new TH1D("HSCP_MassIh0noL1_2s3", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_3s1 = new TH1D("HSCP_MassIh0noL1_3s1", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_3s2 = new TH1D("HSCP_MassIh0noL1_3s2", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
+   TH1D* HSCP_MassIh0noL1_3s3 = new TH1D("HSCP_MassIh0noL1_3s3", "Mass via Ih(no drop noL1)", 200, 0.,4000.);
    TH1D* HSCP_MassIh0strip = new TH1D("HSCP_MassIh0strip", "Mass via Ih(no drop strip)", 200, 0.,4000.);
    TH1D* HSCP_MassIhHDnoL1 = new TH1D("HSCP_MassIhHDnoL1", "Mass via Ih(High drop noL1)", 200, 0.,4000.);
    TH1D* HSCP_MassTOF = new TH1D("HSCP_MassTOF", "Mass via 1/beta", 200, 0.,4000.);
@@ -357,6 +476,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    TH1D* lowp_MassIh0noL1 = new TH1D("lowp_MassIh0noL1", "Mass via Ih(no drop noL1)", 100, 0.,5.);
    TH1D* lowp_MassIh0noL1_2 = new TH1D("lowp_MassIh0noL1_2", "Mass via Ih(no drop noL1)", 100, 0.,5.);
    TH1D* lowp_MassIh0noL1_3 = new TH1D("lowp_MassIh0noL1_3", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_11 = new TH1D("lowp_MassIh0noL1_11", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_12 = new TH1D("lowp_MassIh0noL1_12", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_13 = new TH1D("lowp_MassIh0noL1_13", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_1s1 = new TH1D("lowp_MassIh0noL1_1s1", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_1s2 = new TH1D("lowp_MassIh0noL1_1s2", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_1s3 = new TH1D("lowp_MassIh0noL1_1s3", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_2s1 = new TH1D("lowp_MassIh0noL1_2s1", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_2s2 = new TH1D("lowp_MassIh0noL1_2s2", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_2s3 = new TH1D("lowp_MassIh0noL1_2s3", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_3s1 = new TH1D("lowp_MassIh0noL1_3s1", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_3s2 = new TH1D("lowp_MassIh0noL1_3s2", "Mass via Ih(no drop noL1)", 100, 0.,5.);
+   TH1D* lowp_MassIh0noL1_3s3 = new TH1D("lowp_MassIh0noL1_3s3", "Mass via Ih(no drop noL1)", 100, 0.,5.);
    TH1D* lowp_MassIh0strip = new TH1D("lowp_MassIh0strip", "Mass via Ih(no drop strip)", 100, 0.,5.);
    TH1D* lowp_MassIhHDnoL1 = new TH1D("lowp_MassIhHDnoL1", "Mass via Ih(High drop noL1)", 100, 0.,5.);
    TH2D* lowp2d_MassIh = new TH2D("lowp2d_MassIh", "Mass via Ih", 30,0,3, 100, 0.,2.);
@@ -387,6 +518,10 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
 
    TH1D* HSCP_iasnol1 = new TH1D("HSCP_iasnol1", "Ias (noL1)", 80, 0.,1.);
    TH1D* HSCP_iasall = new TH1D("HSCP_iasall", "Ias (all)", 80, 0.,1.);
+   TH1D* HSCP_probQ = new TH1D("HSCP_probQ", "ProbQ", 80, 0.,1.);
+   TH1D* HSCP_probQNoL1 = new TH1D("HSCP_probQNoL1", "ProbQNoL1", 80, 0.,1.);
+   TH1D* HSCP_probXY = new TH1D("HSCP_probXY", "ProbXY", 80, 0.,1.);
+   TH1D* HSCP_probXYNoL1 = new TH1D("HSCP_probXYNoL1", "ProbXYNoL1", 80, 0.,1.);
 
    TH1D* HSCP_pt = new TH1D("HSCP_pt", "pT",  50, 55.,1550);
    TH1D* HSCP_eta = new TH1D("HSCP_eta", "eta",  24, -3.,3.);
@@ -422,6 +557,7 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    TH2D* dEdX0pixVsRun = new TH2D("dEdX0pixVsRun", "dEdX0(pix):Run", 545, 271000,325500, 60, 0.,15.);
    TH2D* dEdX0stripVsRun = new TH2D("dEdX0stripVsRun", "dEdX0(strip):Run", 545, 271000,325500, 60, 0.,15.);
    TH2D* MassStripVsRun = new TH2D("MassStripVsRun", "Mass:Run", 545, 271000,325500, 80, 0.,4000.);
+   TH2D* MassNoL1VsRun = new TH2D("MassNoL1VsRun", "Mass:Run", 545, 271000,325500, 80, 0.,4000.);
    TH2D* dEdX0NoL1pixVsRun = new TH2D("dEdX0NoL1pixVsRun", "dEdX(Pix only with no L1):Run", 545, 271000,325500, 60, 0.,15.);
    TH2D* dEdX0NoL1VsRun = new TH2D("dEdX0NoL1VsRun", "dEdX(noL1Pix):Run", 545, 271000,325500, 60, 0.,15.);
    TH2D* dEdX4VsRun = new TH2D("dEdXV4sRun", "dEdX:Run", 545, 271000,325500, 60, 0.,15.);
@@ -433,6 +569,11 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    TH2D* bg_dEdX0NoL1VsRun = new TH2D("bg_dEdX0NoL1VsRun", "dEdX(noL1):Run", 545, 271000,325500, 60, 0.,15.);
    TH2D* iasNoL1VsRun = new TH2D("iasNoL1VsRun", "Ias(noL1):Run", 545, 271000,325500, 80, 0.,1.);
    TH2D* iasAllVsRun = new TH2D("iasAllVsRun", "Ias(all):Run", 545, 271000,325500, 80, 0.,1.);
+   TH2D* probQVsRun = new TH2D("probQVsRun", "ProbQ:Run", 545, 271000,325500, 80, 0.,1.);
+   TH2D* probQNoL1VsRun = new TH2D("probQNoL1VsRun", "ProbQ:Run", 545, 271000,325500, 80, 0.,1.);
+   TH2D* probXYVsRun = new TH2D("probXYVsRun", "ProbXY:Run", 545, 271000,325500, 80, 0.,1.);
+   TH2D* probXYNoL1VsRun = new TH2D("probXYNoL1VsRun", "ProbXY:Run", 545, 271000,325500, 80, 0.,1.);
+   TH2D* probQVsIas = new TH2D("probQVsIas", "ProbQ:Ias", 80, 0.,1., 80, 0.,1.);
 
    TH2D* FMIP4VsRun = new TH2D("FMIP4VsRun", "FMIP(4):Run", 545, 271000,325500, 50, 0.,1.);
    TH2D* FMIP3p5VsRun = new TH2D("FMIP3p5VsRun", "FMIP(3.5):Run", 545, 271000,325500, 50, 0.,1.);
@@ -710,6 +851,8 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    ZooChargeVsRun_pixd1->Sumw2();
    ZooChargeVsRun_pixd2->Sumw2();
    ZooChargeVsRun_pixd3->Sumw2();
+   ZooChargeVsRun_pixr1->Sumw2();
+   ZooChargeVsRun_pixr2->Sumw2();
    ZooChargeVsRun_tib1->Sumw2();
    ZooChargeVsRun_tib2->Sumw2();
    ZooChargeVsRun_tib3->Sumw2();
@@ -749,6 +892,7 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    dEdX0NoL1pixVsRun->Sumw2();
    dEdX0NoL1VsRun->Sumw2();
    MassStripVsRun->Sumw2();
+   MassNoL1VsRun->Sumw2();
    dEdX4VsRun->Sumw2();
    dEdX4pixVsRun->Sumw2();
    dEdX4stripVsRun->Sumw2();
@@ -801,6 +945,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    HSCP_MassIh0noL1->Sumw2(); 
    HSCP_MassIh0noL1_2->Sumw2(); 
    HSCP_MassIh0noL1_3->Sumw2(); 
+   HSCP_MassIh0noL1_11->Sumw2(); 
+   HSCP_MassIh0noL1_12->Sumw2(); 
+   HSCP_MassIh0noL1_13->Sumw2(); 
+   HSCP_MassIh0noL1_1s1->Sumw2(); 
+   HSCP_MassIh0noL1_1s2->Sumw2(); 
+   HSCP_MassIh0noL1_1s3->Sumw2(); 
+   HSCP_MassIh0noL1_2s1->Sumw2(); 
+   HSCP_MassIh0noL1_2s2->Sumw2(); 
+   HSCP_MassIh0noL1_2s3->Sumw2(); 
+   HSCP_MassIh0noL1_3s1->Sumw2(); 
+   HSCP_MassIh0noL1_3s2->Sumw2(); 
+   HSCP_MassIh0noL1_3s3->Sumw2(); 
    HSCP_MassIh0strip->Sumw2(); 
    HSCP_MassIhHDnoL1->Sumw2(); 
    HSCP_MassTOF->Sumw2(); 
@@ -829,6 +985,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    lowp_MassIh0noL1->Sumw2(); 
    lowp_MassIh0noL1_2->Sumw2(); 
    lowp_MassIh0noL1_3->Sumw2(); 
+   lowp_MassIh0noL1_11->Sumw2(); 
+   lowp_MassIh0noL1_12->Sumw2(); 
+   lowp_MassIh0noL1_13->Sumw2(); 
+   lowp_MassIh0noL1_1s1->Sumw2(); 
+   lowp_MassIh0noL1_1s2->Sumw2(); 
+   lowp_MassIh0noL1_1s3->Sumw2(); 
+   lowp_MassIh0noL1_2s1->Sumw2(); 
+   lowp_MassIh0noL1_2s2->Sumw2(); 
+   lowp_MassIh0noL1_2s3->Sumw2(); 
+   lowp_MassIh0noL1_3s1->Sumw2(); 
+   lowp_MassIh0noL1_3s2->Sumw2(); 
+   lowp_MassIh0noL1_3s3->Sumw2(); 
    lowp_MassIh0strip->Sumw2(); 
    lowp_MassIhHDnoL1->Sumw2(); 
    lowp2d_MassIh->Sumw2(); 
@@ -852,6 +1020,16 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    HSCP_FMIP3p2->Sumw2(); 
    HSCP_iasnol1->Sumw2(); 
    HSCP_iasall->Sumw2(); 
+   HSCP_probQ->Sumw2();
+   HSCP_probQNoL1->Sumw2();
+   HSCP_probXY->Sumw2();
+   HSCP_probXYNoL1->Sumw2();
+   probQVsRun->Sumw2();
+   probQNoL1VsRun->Sumw2();
+   probXYVsRun->Sumw2();
+   probXYNoL1VsRun->Sumw2();
+   probQVsIas->Sumw2();
+
    HSCP_pt->Sumw2(); 
    HSCP_eta->Sumw2(); 
    HSCP_iso_eop->Sumw2(); 
@@ -890,7 +1068,7 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    else if (year==2018) outputfilename+="_2018";
    outputfilename+=Letter;
    if (!dataFlag) outputfilename+="_MC";
-   outputfilename+="_10feb.root";
+   outputfilename+="_2mars.root";
    TFile* OutputHisto = new TFile(outputfilename,"RECREATE");
    TString templateFileName="template";
    if (year==2016) templateFileName+="_2016";
@@ -898,7 +1076,7 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    else if (year==2018) templateFileName+="_2018";
    templateFileName+=Letter;
    if (!dataFlag) templateFileName+="_MC";
-   templateFileName+="_10feb.root";
+   templateFileName+="_2mars.root";
    TFile* OutputTemplate;
    if (writeTemplateOnDisk) OutputTemplate = new TFile(templateFileName,"RECREATE");
 
@@ -911,21 +1089,38 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
 
 //   loadDeDxTemplates
 
+    if (boolDeDxTemp) {
      if (!dataFlag) {
-     dEdxTemplatesNoL1 = loadDeDxTemplate("templateMC_w17_MC_21jan.root", "Charge_Vs_Path_noL1_NoM", true);
-     dEdxTemplatesAll = loadDeDxTemplate("templateMC_w17_MC_21jan.root", "Charge_Vs_Path", true);
+//     dEdxTemplatesNoL1 = loadDeDxTemplate("templateMC_w17_MC_21jan.root", "Charge_Vs_Path_noL1_NoM", true);
+      if (year==2017) {
+       dEdxTemplatesNoL1 = loadDeDxTemplate("templateMC_w17_MC_21jan.root", "Charge_Vs_Path_noL1", true);
+       dEdxTemplatesAll = loadDeDxTemplate("templateMC_w17_MC_21jan.root", "Charge_Vs_Path", true);
+      }
+      else if (year==2018){
+       dEdxTemplatesNoL1 = loadDeDxTemplate("template_2018MC_w18_MC_28feb.root", "Charge_Vs_Path_noL1", true);
+       dEdxTemplatesAll = loadDeDxTemplate("template_2018MC_w18_MC_28feb.root", "Charge_Vs_Path", true);
+      }
      }
      else {
      // note : for data, we should write something smart to read template per era
       std::string TemplateDataName = "template";
-      if (year==2016) TemplateDataName+="_2016";
-      else if (year==2017) TemplateDataName+="_2017";
-      else if (year==2018) TemplateDataName+="_2018";
-      TemplateDataName+=Letter;
-      TemplateDataName+="_21jan.root";
-      dEdxTemplatesNoL1 = loadDeDxTemplate(TemplateDataName, "Charge_Vs_Path_noL1_NoM", true);
+      if (year>2016) { 
+//      if (year==2016) TemplateDataName+="_2016";
+       if (year==2017) TemplateDataName+="_2017";
+       else if (year==2018) TemplateDataName+="_2018";
+       TemplateDataName+=Letter;
+       if (year==2017) TemplateDataName+="_21jan.root";
+       else if (year==2018) TemplateDataName+="_28feb.root";
+      }
+      else { 
+        TemplateDataName+="_2017B_21jan.root";
+      }
+
+//      dEdxTemplatesNoL1 = loadDeDxTemplate(TemplateDataName, "Charge_Vs_Path_noL1_NoM", true);
+      dEdxTemplatesNoL1 = loadDeDxTemplate(TemplateDataName, "Charge_Vs_Path_noL1", true);
       dEdxTemplatesAll = loadDeDxTemplate(TemplateDataName, "Charge_Vs_Path", true);
      }
+    }
 
 
 //   nentries = 200000;
@@ -937,7 +1132,8 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
       if (ientry < 0) break;
       nb = fChain->GetEntry(jentry);   nbytes += nb;
 
-      if(jentry%5000000 ==0 && jentry!=0) cout << " number of processed events is " << jentry <<  " = " << (100.*jentry)/(1.*nentries) << "%" <<endl;
+      if(jentry%1000000 ==0 && jentry!=0) cout << " number of processed events is " << jentry <<  " = " << (100.*jentry)/(1.*nentries) << "%" <<endl;
+//      if(jentry%10000 ==0 && jentry!=0) cout << " number of processed events is " << jentry <<  " = " << (100.*jentry)/(1.*nentries) << "%" <<endl;
 
       if (!dataFlag) runNumber = 300000;
 
@@ -994,10 +1190,6 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
              
              if (selection) {
                 ptVsRun->Fill(runNumber,track_pt[index_of_the_track]);
-                HSCP_pt->Fill(track_pt[index_of_the_track]);
-                HSCP_eta->Fill(track_eta[index_of_the_track]);
-                HSCP_iso_eop->Fill(eop);
-                if (boolILumi) lumiVsRun->Fill(runNumber,InstLumi);
 
                 std::vector <float> charge_corr;
                 std::vector <float> pathlength;
@@ -1141,20 +1333,16 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                   // Ih 15% drop of lowest values
                   double ih_LD        = getdEdX(charge_corr,    pathlength,  subdetId,  moduleGeometry,  bool_cleaning,  mustBeInside,  dEdxSF, NULL,2, 0.15, nval1, nsatv1);
                   dEdXVsRun->Fill(       runNumber,ih_LD);
-                  HSCP_dEdX->Fill(ih_LD);
                   NmeasVsRun->Fill(runNumber,nval1);
                   if (nsatv1>9) nsatv1=9;
                   // Ih no drop
                   double ih0_cor     = getdEdX(charge_corr,  pathlength,  subdetId,  moduleGeometry,  bool_cleaning,  mustBeInside,  dEdxSF, NULL,2, 0., nval1_0, nsatv1_0);
                   dEdX0VsRun->Fill(runNumber,ih0_cor);
-                  HSCP_dEdX0->Fill(ih0_cor);
                   int nval1HD=0;
                   int nsatv1HD=0;
                   // Ih  15% drop of highest values
                   double ih_corHiDrop = getdEdX(charge_corr,  pathlength,  subdetId,  moduleGeometry,  bool_cleaning,  mustBeInside,  dEdxSF, NULL,2, 0., 0.15, nval1HD, nsatv1HD);
                   dEdXHiDropVsRun->Fill(     runNumber,ih_corHiDrop);
-                  HSCP_dEdXHiDrop->Fill(ih_corHiDrop);
-
 
                   int nval2=0;
                   int nval2_0=0;
@@ -1165,7 +1353,6 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                   // Ih 15% drop of lowest values
                   double ih_LDstrip   = getdEdX(charge_corr1,   pathlength1, subdetId1, moduleGeometry1, bool_cleaning1, mustBeInside1, dEdxSF, NULL,2, 0.15, nval2, nsatv2);
                   dEdXstripVsRun->Fill(  runNumber,ih_LDstrip);
-                  HSCP_dEdXstrip->Fill(ih_LDstrip);
                   NmeasStrVsRun->Fill(runNumber,nval2);
                   if (nsatv2>9) nsatv2=9;
                   NsatVsRun->Fill(runNumber,nsatv1);
@@ -1173,12 +1360,11 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                   // Ih no drop
                   double ih0_strip   = getdEdX(charge_corr1, pathlength1, subdetId1, moduleGeometry1, bool_cleaning1, mustBeInside1, dEdxSF, NULL,2, 0., nval2_0, nsatv2_0);
                   dEdX0stripVsRun->Fill(runNumber,ih0_strip);
-                  HSCP_dEdX0strip->Fill(ih0_strip);
+
+
                   // Ih  15% drop of highest values
                   double ih_stripHiDrop = getdEdX(charge_corr1, pathlength1, subdetId1, moduleGeometry1, bool_cleaning1, mustBeInside1, dEdxSF, NULL,2, 0., 0.15, nval2HD, nsatv2HD);
-                  HSCP_dEdXstripHiDrop->Fill(ih_stripHiDrop);
                   dEdXstripHiDropVsRun->Fill(runNumber,ih_stripHiDrop );
-
 
                   int nval3=0;
                   int nval3_0=0;
@@ -1189,19 +1375,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                   // Ih 15% drop of lowest values
                   double ih_LDpix     = getdEdX(charge_corr2,   pathlength2, subdetId2, moduleGeometry2, bool_cleaning2, mustBeInside2, dEdxSF, NULL,2, 0.15, nval3, nsatv3);
                   dEdXpixVsRun->Fill(    runNumber,ih_LDpix);
-                  HSCP_dEdXpix->Fill(ih_LDpix);
                   NmeasPixVsRun->Fill(runNumber,nval3);
                   if (nsatv3>9) nsatv3=9;
                   NsatPixVsRun->Fill(runNumber,nsatv3);
                   // Ih no drop
                    double ih0_pix     = getdEdX(charge_corr2, pathlength2, subdetId2, moduleGeometry2, bool_cleaning2, mustBeInside2, dEdxSF, NULL,2, 0., nval3_0, nsatv3_0);
                   dEdX0pixVsRun->Fill(runNumber,ih0_pix);
-                  HSCP_dEdX0pix->Fill(ih0_pix);
+
+
+
                   // Ih  15% drop of highest values
                   double ih_pixHiDrop   = getdEdX(charge_corr2, pathlength2, subdetId2, moduleGeometry2, bool_cleaning2, mustBeInside2, dEdxSF, NULL,2, 0., 0.15, nval3HD, nsatv3HD);
                   dEdXpixHiDropVsRun->Fill(  runNumber,ih_pixHiDrop);
-                  HSCP_dEdXpixHiDrop->Fill(ih_pixHiDrop);
-
 
 
                   int nval6=0;
@@ -1215,10 +1400,6 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                   double ih0_noL1pix = getdEdX(charge_corr5, pathlength5, subdetId5, moduleGeometry5, bool_cleaning5, mustBeInside5, dEdxSF, NULL,2, 0., nval6_0, nsatv6_0);
                   dEdX0NoL1pixVsRun->Fill(runNumber,ih0_noL1pix);
                  
-                  // comparison
-                  HSCP_dEdXpixVsstrip->Fill(ih_LDstrip,ih_LDpix);
-                  HSCP_dEdXstripVsall->Fill(ih_LD,ih_LDstrip);
-                  HSCP_dEdXpixVsall->Fill(ih_LD,ih_LDpix);
 
                   float mass_ih0noL1=-1;
                   float mass_ihHDnoL1=-1;
@@ -1226,102 +1407,19 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                   float mass_ih0noL1_3=-1;
 
 
+                  // Ias
                   int nval20_0=0;
                   int nsat20_0=0;
-                  double ias_all = getdEdX(charge_corr, pathlength, subdetId, moduleGeometry, bool_cleaning, mustBeInside, dEdxSF, dEdxTemplatesAll,2, 0., nval20_0, nsat20_0);
-                  HSCP_iasall->Fill(ias_all);
+                  double ias_all =-1;
+                  if (boolDeDxTemp)  ias_all=getdEdX(charge_corr, pathlength, subdetId, moduleGeometry, bool_cleaning, mustBeInside, dEdxSF, dEdxTemplatesAll,2, 0., nval20_0, nsat20_0);
                   iasAllVsRun->Fill(   runNumber,ias_all);
 
-                  // additional cut on the number of measurement points
-                  if (charge_corr3.size() >=6) {
 
-                     int nval4=0;
-                     int nval4_0=0;
-                     int nsatv4=0;
-                     int nsatv4_0=0;
-
-                     HSCP_nstrip->Fill(nstip_);
-                     HSCP_npix->Fill(npix_);
-                     if (nstip_>0) HSCP_nratio->Fill(npix_*1./nstip_);
-                     HSCP_nmstrip->Fill(charge_corr1.size());
-                     HSCP_nmpix->Fill(charge_corr5.size());
-                     if (charge_corr1.size()>0) HSCP_nmratio->Fill(charge_corr5.size()*1./charge_corr1.size());
-
-                     // Ih 15% drop of lowest values
-                     double ih_LDnoL1    = getdEdX(charge_corr3, pathlength3, subdetId3, moduleGeometry3, bool_cleaning3, mustBeInside3, dEdxSF, NULL,2, 0.15, nval4, nsatv4);
-                     dEdXNoL1VsRun->Fill(   runNumber,ih_LDnoL1);
- 
-                     // Ih no drop
-                     double ih0_noL1 = getdEdX(charge_corr3, pathlength3, subdetId3, moduleGeometry3, bool_cleaning3, mustBeInside3, dEdxSF, NULL,2, 0., nval4_0, nsatv4_0);
-
-                     dEdX0NoL1VsRun->Fill(runNumber,ih0_noL1);  //  <==== our best estimate for Ih
-                     HSCP_dEdX0NoL1->Fill(ih0_noL1);
-                     HSCP_dEdX0pixVsstrip->Fill(ih0_strip,ih0_noL1pix);
-
-                     Nmeas0VsRun->Fill(runNumber,nval4_0);    // no L1
-                     NmeasPix0VsRun->Fill(runNumber,nval6_0); // no L1
-                     NmeasStr0VsRun->Fill(runNumber,nval2_0);  
-
-                     // Ih  15% drop of highest values
-                     nval1HD=0;
-                     nsatv1HD=0;
-                     double ih_corHiDropNoL1 = getdEdX(charge_corr3,  pathlength3,  subdetId3,  moduleGeometry3,  bool_cleaning3,  mustBeInside3,  dEdxSF, NULL,2, 0., 0.15, nval1HD, nsatv1HD);
-                     dEdXHiDropNoL1VsRun->Fill(     runNumber,ih_corHiDropNoL1);
-                     HSCP_dEdXHiDropNoL1->Fill(ih_corHiDropNoL1);
-
-                     if (ih0_noL1 - Cval_nol1>0) mass_ih0noL1= sqrt((ih0_noL1 - Cval_nol1)*track_p[hscp_track_idx[ihs]]*track_p[hscp_track_idx[ihs]]/Kval_nol1);
-                     if (ih0_noL1 - Cval_nol1_2>0) mass_ih0noL1_2= sqrt((ih0_noL1 - Cval_nol1_2)*track_p[hscp_track_idx[ihs]]*track_p[hscp_track_idx[ihs]]/Kval_nol1_2);
-                     if (ih0_noL1 - Cval_nol1_3>0) mass_ih0noL1_3= getMassSpecial(ih0_noL1,track_p[hscp_track_idx[ihs]], Kval_nol1_3, Cval_nol1_3,Nval_nol1_3);
-                     if (ih_corHiDropNoL1 - Cval_hdnol1>0) mass_ihHDnoL1= sqrt((ih_corHiDropNoL1 - Cval_hdnol1)*track_p[index_of_the_track]*track_p[index_of_the_track]/Kval_hdnol1);
-                     if (!blind_data) {
-                       HSCP_MassIh0noL1->Fill(mass_ih0noL1);
-                       HSCP_MassIh0noL1_2->Fill(mass_ih0noL1_2);
-                       HSCP_MassIh0noL1_3->Fill(mass_ih0noL1_3);
-                       HSCP_MassIhHDnoL1->Fill(mass_ihHDnoL1);
-                       HSCP2d_MassIh0noL1->Fill(track_p[index_of_the_track],mass_ih0noL1);
-                       HSCP2d_MassIhHDnoL1->Fill(track_p[index_of_the_track],mass_ihHDnoL1);
-                     }
-                     else if (mass_ih0noL1<500) {
-                       HSCP_MassIh0noL1->Fill(mass_ih0noL1);
-                     }
-
-                     float fmip_strip4 =   FMIP(charge_corr1, pathlength1,dEdxSF[0],4);
-                     float fmip_strip3p5 = FMIP(charge_corr1, pathlength1,dEdxSF[0], 3.5);
-                     float fmip_strip3p2 = FMIP(charge_corr1, pathlength1,dEdxSF[0], 3.2);
-
-                     FMIP4VsRun->Fill(   runNumber,fmip_strip4);
-                     FMIP3p5VsRun->Fill( runNumber,fmip_strip3p5);
-                     FMIP3p2VsRun->Fill( runNumber,fmip_strip3p2);
-
-                     FMIP4VsEta->Fill(track_eta[hscp_track_idx[ihs]],fmip_strip4);
-
-                     HSCP_FMIP4->Fill(fmip_strip4);
-                     HSCP_FMIP3p5->Fill(fmip_strip3p5);
-                     HSCP_FMIP3p2->Fill(fmip_strip3p2);
-
-
-                     if (nsatv4_0>9) nsatv4_0=9;
-                     if (nsatv2_0>9) nsatv2_0=9;
-                     if (nsatv6_0>9) nsatv6_0=9;
-                     Nsat0VsRun->Fill(runNumber,nsatv4_0);
-                     NsatPix0VsRun->Fill(runNumber,nsatv6_0);
-                     NsatStr0VsRun->Fill(runNumber,nsatv2_0);
-
-                     // Ias
-                     nval20_0=0;
-                     nsat20_0=0;
-                     double ias_noL1 = getdEdX(charge_corr3, pathlength3, subdetId3, moduleGeometry3, bool_cleaning3, mustBeInside3, dEdxSF, dEdxTemplatesNoL1,2, 0., nval20_0, nsat20_0);
-                     HSCP_iasnol1->Fill(ias_noL1);
-                     iasNoL1VsRun->Fill(   runNumber,ias_noL1);
-/*
-                     if (boolILumi) {
-                      dEdXVsIL->Fill(InstLumi,ih_LD);
-                      dEdXpixVsIL->Fill(InstLumi,ih_pix);
-                      dEdXstripVsIL->Fill(InstLumi,ih_strip);
-                     }
-*/
-
-                  } // end cut on #meas charge_corr3.size
+                  nval20_0=0;
+                  nsat20_0=0;
+                  double ias_noL1 = -1;
+                  if (boolDeDxTemp) ias_noL1= getdEdX(charge_corr3, pathlength3, subdetId3, moduleGeometry3, bool_cleaning3, mustBeInside3, dEdxSF, dEdxTemplatesNoL1,2, 0., nval20_0, nsat20_0);
+                  iasNoL1VsRun->Fill(   runNumber,ias_noL1);
 
                   float mass_strip=-1;
                   if (ih_LDstrip - Cval_ldstrip>0) mass_strip=sqrt((ih_LDstrip - Cval_ldstrip)*track_p[index_of_the_track]*track_p[index_of_the_track]/Kval_ldstrip);
@@ -1344,30 +1442,176 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                   if (ih0_noL1pix - Cval_pixnol1>0) mass_pixnL1= sqrt((ih0_noL1pix - Cval_pixnol1)*track_p[index_of_the_track]*track_p[index_of_the_track]/Kval_pixnol1);
 
 
-                  if (!blind_data) {
-                      HSCP_MassIhstrip->Fill(mass_strip);
-                      HSCP_MassIh->Fill(mass_ih);
-                      HSCP_MassIh0->Fill(mass_ih0);
-                      HSCP_MassIh0strip->Fill(mass_0strip);
-                      HSCP2d_MassIhstrip->Fill(track_p[index_of_the_track],mass_strip);
-                      HSCP2d_MassIh->Fill(track_p[index_of_the_track],mass_ih);
-                      HSCP2d_MassIh0->Fill(track_p[index_of_the_track],mass_ih0);
-                      HSCP2d_MassIh0strip->Fill(track_p[index_of_the_track],mass_0strip);
+                  // additional cut on the number of measurement points
+                  if (charge_corr3.size() >=6) {
 
-                      HSCP2d_Mass_pix_strip15->Fill(mass_strip,mass_pixel);
-                      HSCP2d_Mass_pix_strip0->Fill(mass_0strip,mass_pixnL1);
-                      HSCP2d_Mass_pix_strip->Fill(mass_0strip,mass_pixnL1);
-                      if (mass_0strip>0 && mass_pixnL1>0 ) {
+                     int nval4=0;
+                     int nval4_0=0;
+                     int nsatv4=0;
+                     int nsatv4_0=0;
+
+
+                     // Ih 15% drop of lowest values
+                     double ih_LDnoL1    = getdEdX(charge_corr3, pathlength3, subdetId3, moduleGeometry3, bool_cleaning3, mustBeInside3, dEdxSF, NULL,2, 0.15, nval4, nsatv4);
+                     dEdXNoL1VsRun->Fill(   runNumber,ih_LDnoL1);
+ 
+                     // Ih no drop
+                     double ih0_noL1 = getdEdX(charge_corr3, pathlength3, subdetId3, moduleGeometry3, bool_cleaning3, mustBeInside3, dEdxSF, NULL,2, 0., nval4_0, nsatv4_0);
+
+                     dEdX0NoL1VsRun->Fill(runNumber,ih0_noL1);  //  <==== our best estimate for Ih
+
+                     Nmeas0VsRun->Fill(runNumber,nval4_0);    // no L1
+                     NmeasPix0VsRun->Fill(runNumber,nval6_0); // no L1
+                     NmeasStr0VsRun->Fill(runNumber,nval2_0);  
+
+                     // Ih  15% drop of highest values
+                     nval1HD=0;
+                     nsatv1HD=0;
+                     double ih_corHiDropNoL1 = getdEdX(charge_corr3,  pathlength3,  subdetId3,  moduleGeometry3,  bool_cleaning3,  mustBeInside3,  dEdxSF, NULL,2, 0., 0.15, nval1HD, nsatv1HD);
+                     dEdXHiDropNoL1VsRun->Fill(     runNumber,ih_corHiDropNoL1);
+
+                     if (ih0_noL1 - Cval_nol1>0) mass_ih0noL1= sqrt((ih0_noL1 - Cval_nol1)*track_p[hscp_track_idx[ihs]]*track_p[hscp_track_idx[ihs]]/Kval_nol1);
+                     if (ih0_noL1 - Cval_nol1_2>0) mass_ih0noL1_2= sqrt((ih0_noL1 - Cval_nol1_2)*track_p[hscp_track_idx[ihs]]*track_p[hscp_track_idx[ihs]]/Kval_nol1_2);
+                     float val_nol1_3 = Cval_nol1_3 + (0.92*0.92*Kval_nol1_3)/(6.5*6.5) +Nval_nol1_3*log(6.5/0.92);
+                     if (ih0_noL1 - val_nol1_3 >0 && computeSpecial) 
+                                          mass_ih0noL1_3= getMassSpecial(ih0_noL1,track_p[hscp_track_idx[ihs]], Kval_nol1_3, Cval_nol1_3,Nval_nol1_3);
+                     if (ih_corHiDropNoL1 - Cval_hdnol1>0) mass_ihHDnoL1= sqrt((ih_corHiDropNoL1 - Cval_hdnol1)*track_p[index_of_the_track]*track_p[index_of_the_track]/Kval_hdnol1);
+
+                     float fmip_strip4 =   FMIP(charge_corr1, pathlength1,dEdxSF[0],4);
+                     float fmip_strip3p5 = FMIP(charge_corr1, pathlength1,dEdxSF[0], 3.5);
+                     float fmip_strip3p2 = FMIP(charge_corr1, pathlength1,dEdxSF[0], 3.2);
+
+                     FMIP4VsRun->Fill(   runNumber,fmip_strip4);
+                     FMIP3p5VsRun->Fill( runNumber,fmip_strip3p5);
+                     FMIP3p2VsRun->Fill( runNumber,fmip_strip3p2);
+
+                     if (nsatv4_0>9) nsatv4_0=9;
+                     if (nsatv2_0>9) nsatv2_0=9;
+                     if (nsatv6_0>9) nsatv6_0=9;
+                     Nsat0VsRun->Fill(runNumber,nsatv4_0);
+                     NsatPix0VsRun->Fill(runNumber,nsatv6_0);
+                     NsatStr0VsRun->Fill(runNumber,nsatv2_0);
+
+
+                     if ((!blind_data) || (mass_ih0noL1_2<500)) {
+
+                       HSCP_pt->Fill(track_pt[index_of_the_track]);
+                       HSCP_eta->Fill(track_eta[index_of_the_track]);
+                       HSCP_iso_eop->Fill(eop);
+                       if (boolILumi) lumiVsRun->Fill(runNumber,InstLumi);
+                       HSCP_dEdX->Fill(ih_LD);
+                       HSCP_dEdX0->Fill(ih0_cor);
+                       HSCP_dEdXHiDrop->Fill(ih_corHiDrop);
+                       HSCP_dEdXstrip->Fill(ih_LDstrip);
+                       HSCP_dEdX0strip->Fill(ih0_strip);
+                       HSCP_dEdXHiDropNoL1->Fill(ih_corHiDropNoL1);
+                       // comparison
+                       HSCP_dEdXstripHiDrop->Fill(ih_stripHiDrop);
+                       HSCP_dEdX0pix->Fill(ih0_pix);
+                       HSCP_dEdXpix->Fill(ih_LDpix);
+                       HSCP_dEdXpixHiDrop->Fill(ih_pixHiDrop);
+                       HSCP_dEdXpixVsstrip->Fill(ih_LDstrip,ih_LDpix);
+                       HSCP_dEdXstripVsall->Fill(ih_LD,ih_LDstrip);
+                       HSCP_dEdXpixVsall->Fill(ih_LD,ih_LDpix);
+  
+                       // our best Ih estimate :
+                       HSCP_dEdX0NoL1->Fill(ih0_noL1);
+                       HSCP_dEdX0pixVsstrip->Fill(ih0_strip,ih0_noL1pix);
+
+
+                       HSCP_iasall->Fill(ias_all);
+                       HSCP_iasnol1->Fill(ias_noL1);
+                       if (boolProbQ) {
+                        HSCP_probQ->Fill(track_probQ[index_of_the_track]);
+                        HSCP_probQNoL1->Fill(track_probQNoL1[index_of_the_track]);
+                        HSCP_probXY->Fill(track_probXY[index_of_the_track]);
+                        HSCP_probXYNoL1->Fill(track_probXYNoL1[index_of_the_track]);
+                        probQVsRun->Fill(   runNumber,track_probQ[index_of_the_track]);
+                        probQNoL1VsRun->Fill(   runNumber,track_probQNoL1[index_of_the_track]);
+                        probXYVsRun->Fill(   runNumber,track_probXY[index_of_the_track]);
+                        probXYNoL1VsRun->Fill(   runNumber,track_probXYNoL1[index_of_the_track]);
+                        probQVsIas->Fill(ias_all,track_probQ[index_of_the_track]);
+                       }
+
+                       HSCP_nstrip->Fill(nstip_);
+                       HSCP_npix->Fill(npix_);
+                       if (nstip_>0) HSCP_nratio->Fill(npix_*1./nstip_);
+                       HSCP_nmstrip->Fill(charge_corr1.size());
+                       HSCP_nmpix->Fill(charge_corr5.size());
+                       if (charge_corr1.size()>0) HSCP_nmratio->Fill(charge_corr5.size()*1./charge_corr1.size());
+
+                       HSCP_MassIh0noL1->Fill(mass_ih0noL1);
+                       HSCP_MassIh0noL1_2->Fill(mass_ih0noL1_2);
+                       HSCP_MassIh0noL1_3->Fill(mass_ih0noL1_3);
+
+                       if (ih0_noL1> Cval_nol1) {
+                       HSCP_MassIh0noL1_11->Fill(mass_ih0noL1);
+                       HSCP_MassIh0noL1_12->Fill(mass_ih0noL1_2);
+                       HSCP_MassIh0noL1_13->Fill(mass_ih0noL1_3);
+                       MassNoL1VsRun->Fill(runNumber,mass_ih0noL1_2);
+                       }
+                       if (ih0_noL1>3.27 + 0.21) {
+                       HSCP_MassIh0noL1_1s1->Fill(mass_ih0noL1);
+                       HSCP_MassIh0noL1_1s2->Fill(mass_ih0noL1_2);
+                       HSCP_MassIh0noL1_1s3->Fill(mass_ih0noL1_3);
+                         if (ih0_noL1>3.27 + 2*0.21) {
+                         HSCP_MassIh0noL1_2s1->Fill(mass_ih0noL1);
+                         HSCP_MassIh0noL1_2s2->Fill(mass_ih0noL1_2);
+                         HSCP_MassIh0noL1_2s3->Fill(mass_ih0noL1_3);
+                           if (ih0_noL1>3.27 + 3*0.21) {
+                           HSCP_MassIh0noL1_3s1->Fill(mass_ih0noL1);
+                           HSCP_MassIh0noL1_3s2->Fill(mass_ih0noL1_2);
+                           HSCP_MassIh0noL1_3s3->Fill(mass_ih0noL1_3);
+                           }
+                         }
+                       }
+
+                       HSCP_MassIhHDnoL1->Fill(mass_ihHDnoL1);
+                       HSCP2d_MassIh0noL1->Fill(track_p[index_of_the_track],mass_ih0noL1);
+                       HSCP2d_MassIhHDnoL1->Fill(track_p[index_of_the_track],mass_ihHDnoL1);
+                       HSCP_MassIhstrip->Fill(mass_strip);
+                       HSCP_MassIh->Fill(mass_ih);
+                       HSCP_MassIh0->Fill(mass_ih0);
+                       HSCP_MassIh0strip->Fill(mass_0strip);
+                       HSCP2d_MassIhstrip->Fill(track_p[index_of_the_track],mass_strip);
+                       HSCP2d_MassIh->Fill(track_p[index_of_the_track],mass_ih);
+                       HSCP2d_MassIh0->Fill(track_p[index_of_the_track],mass_ih0);
+                       HSCP2d_MassIh0strip->Fill(track_p[index_of_the_track],mass_0strip);
+
+                       HSCP2d_Mass_pix_strip15->Fill(mass_strip,mass_pixel);
+                       HSCP2d_Mass_pix_strip0->Fill(mass_0strip,mass_pixnL1);
+                       HSCP2d_Mass_pix_strip->Fill(mass_0strip,mass_pixnL1);
+                       if (mass_0strip>0 && mass_pixnL1>0 ) {
                         HSCP_MassDiff_pix_strip0->Fill(mass_0strip - mass_pixnL1);
                         HSCP_MassResol_pix_strip0->Fill((mass_0strip - mass_pixnL1)/mass_0strip);
-                      }
-                      if (mass_strip>0 && mass_pixel>0) {
+                       }
+                       if (mass_strip>0 && mass_pixel>0) {
                         HSCP_MassDiff_pix_strip15->Fill(mass_strip - mass_pixel);
                         HSCP_MassResol_pix_strip15->Fill((mass_strip - mass_pixel)/mass_strip);
-                      }
+                       }
 
                        MassStripVsRun->Fill(runNumber,mass_strip);
-                  }
+
+                       FMIP4VsEta->Fill(track_eta[index_of_the_track],fmip_strip4);
+
+                       HSCP_FMIP4->Fill(fmip_strip4);
+                       HSCP_FMIP3p5->Fill(fmip_strip3p5);
+                       HSCP_FMIP3p2->Fill(fmip_strip3p2);
+                     }
+
+
+
+
+/*
+                     if (boolILumi) {
+                      dEdXVsIL->Fill(InstLumi,ih_LD);
+                      dEdXpixVsIL->Fill(InstLumi,ih_pix);
+                      dEdXstripVsIL->Fill(InstLumi,ih_strip);
+                     }
+*/
+
+                  } // end cut on #meas charge_corr3.size
+
 
                   if (runNumber==305186) {
                         R1_StdEdXVsEvent->Fill(event,ih_LDstrip);
@@ -1444,7 +1688,8 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                           float beta_for_mass = 1./muon_comb_inversebeta[hscp_muon_idx[ihs]];
                           float gamma_for_mass = 1/sqrt(1-beta_for_mass*beta_for_mass);
                           float mass_tof = track_p[index_of_the_track]/(beta_for_mass*gamma_for_mass) ;
-                          if (!blind_data) {
+//                          if (!blind_data) {
+                          if ((!blind_data) || (mass_ih0noL1_2<500)) {
                               HSCP_MassTOF->Fill(mass_tof); 
                               HSCP2d_MassTOFvsIh->Fill(mass_tof,mass_ih0noL1); 
                           }
@@ -1453,16 +1698,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                          invBVsRun->Fill(runNumber,muon_comb_inversebeta[hscp_muon_idx[ihs]]);
                          errinvBVsRun->Fill(runNumber,muon_comb_inversebetaerr[hscp_muon_idx[ihs]]);
                          timeVsRun->Fill(runNumber,muon_comb_vertextime[hscp_muon_idx[ihs]]);
-                         HSCP_invB->Fill(muon_comb_inversebeta[hscp_muon_idx[ihs]]);
-                         HSCP_errinvB->Fill(muon_comb_inversebetaerr[hscp_muon_idx[ihs]]);
-                         HSCP_time->Fill(muon_comb_vertextime[hscp_muon_idx[ihs]]);
-                         if (muon_dt_tofndof[hscp_muon_idx[ihs]]>=6) {
-                           invBDTVsRun->Fill(runNumber,muon_dt_inversebeta[hscp_muon_idx[ihs]]);
-                           HSCP_invBDT->Fill(muon_dt_inversebeta[hscp_muon_idx[ihs]]);
-                         }
-                         if (muon_csc_tofndof[hscp_muon_idx[ihs]]>=6) {
-                           invBCSCVsRun->Fill(runNumber,muon_csc_inversebeta[hscp_muon_idx[ihs]]);
-                           HSCP_invBCSC->Fill(muon_csc_inversebeta[hscp_muon_idx[ihs]]);
+                         if ((!blind_data) || (mass_ih0noL1_2<500)) {
+                           HSCP_invB->Fill(muon_comb_inversebeta[hscp_muon_idx[ihs]]);
+                           HSCP_errinvB->Fill(muon_comb_inversebetaerr[hscp_muon_idx[ihs]]);
+                           HSCP_time->Fill(muon_comb_vertextime[hscp_muon_idx[ihs]]);
+                           if (muon_dt_tofndof[hscp_muon_idx[ihs]]>=6) {
+                            invBDTVsRun->Fill(runNumber,muon_dt_inversebeta[hscp_muon_idx[ihs]]);
+                            HSCP_invBDT->Fill(muon_dt_inversebeta[hscp_muon_idx[ihs]]);
+                           }
+                           if (muon_csc_tofndof[hscp_muon_idx[ihs]]>=6) {
+                            invBCSCVsRun->Fill(runNumber,muon_csc_inversebeta[hscp_muon_idx[ihs]]);
+                            HSCP_invBCSC->Fill(muon_csc_inversebeta[hscp_muon_idx[ihs]]);
+                           }
                          }
                        }
                        if (year==2016) {
@@ -1473,12 +1720,14 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                         if (fabs(muon_newcomb_inversebeta[hscp_muon_idx[ihs]]-1)>=50) tof_sel = false;  // not in the official selection in 
                         if (tof_sel) {
 
-                         invBnewVsRun->Fill(runNumber,muon_newcomb_inversebeta[hscp_muon_idx[ihs]]);
-                         if (muon_newdt_tofndof[hscp_muon_idx[ihs]]>=6) {
+                         if ((!blind_data) || (mass_ih0noL1_2<500)) {
+                          invBnewVsRun->Fill(runNumber,muon_newcomb_inversebeta[hscp_muon_idx[ihs]]);
+                          if (muon_newdt_tofndof[hscp_muon_idx[ihs]]>=6) {
                            invBnewDTVsRun->Fill(runNumber,muon_newdt_inversebeta[hscp_muon_idx[ihs]]);
-                         }
-                         if (muon_newcsc_tofndof[hscp_muon_idx[ihs]]>=6) {
+                          }
+                          if (muon_newcsc_tofndof[hscp_muon_idx[ihs]]>=6) {
                            invBnewCSCVsRun->Fill(runNumber,muon_newcsc_inversebeta[hscp_muon_idx[ihs]]);
+                          }
                          }
                         }
                        }
@@ -1676,16 +1925,13 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                    if (fabs(track_eta[itr])<0.4){
                     HHitProfilePix->Fill(track_p[itr], ChargeOverPathlength, presk);
                     HHit2DPix->Fill(track_p[itr], ChargeOverPathlength, presk);
-                    if (charge_corr3.size()>6) HHit2DPix_NoM->Fill(track_p[itr], ChargeOverPathlength, presk);
 		   }
                    if (track_p[itr]>5 && track_p[itr]<45) {
                       Charge_Vs_Path_noL1->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10*norm_mult),presk);
-                      if  (charge_corr3.size()>6) Charge_Vs_Path_noL1_NoM->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10*norm_mult),presk);
                    }
                   }
                   if (track_p[itr]>5 && track_p[itr]<45) {
                       Charge_Vs_Path->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10*norm_mult),presk);
-                      if  (charge_corr3.size()>6) Charge_Vs_Path_NoM->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10*norm_mult),presk);
                      
                   }
               }
@@ -1697,15 +1943,10 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
 		   if (fabs(track_eta[itr])<0.4 && sclus_clusclean2[iclu] && dedx_insideTkMod[iclu] ){
 			    HHitProfileStrip->Fill(track_p[itr], ChargeOverPathlength, presk);
 			    HHit2DStrip->Fill(track_p[itr], ChargeOverPathlength, presk);
-                            if (charge_corr3.size()>6) HHit2DStrip_NoM->Fill(track_p[itr], ChargeOverPathlength, presk);
 		  }
                   if (track_p[itr]>5 && track_p[itr]<45) {
                    Charge_Vs_Path->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10),presk);
                    Charge_Vs_Path_noL1->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10), presk);
-                   if (charge_corr3.size()>6) {
-                    Charge_Vs_Path_NoM->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10),presk);
-                    Charge_Vs_Path_noL1_NoM->Fill (dedx_modulgeom[iclu], dedx_pathlength[iclu]*10, scaleFactor*ch1/(dedx_pathlength[iclu]*10), presk);
-                   }
                   }
 	      }
 
@@ -1713,6 +1954,41 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
 
 			     
          }
+  
+         // APPLY Selection on the Number of Measurements :
+         if (charge_corr3.size()>6) {
+            // Pixel no L1;
+            float norm_mult = 265; // 247 or 265?
+            for (unsigned int jch=0;jch<charge_corr4.size();jch++) {
+		   float Norm = 3.61e-06;
+		   float scaleFactor =dEdxSF[0]*dEdxSF[1];
+		   double ChargeOverPathlength = scaleFactor*Norm*charge_corr4[jch];
+		   if (pathlength4[jch]>0) ChargeOverPathlength/=pathlength4[jch];
+		   else ChargeOverPathlength=0;
+                   if (fabs(track_eta[itr])<0.4) HHit2DPix_NoM->Fill(track_p[itr], ChargeOverPathlength, presk);
+                   if (track_p[itr]>5 && track_p[itr]<45) {
+                      Charge_Vs_Path_noL1_NoM->Fill (moduleGeometry4[jch], pathlength4[jch]*10, scaleFactor*charge_corr4[jch]/(pathlength4[jch]*10*norm_mult),presk);
+                      Charge_Vs_Path_NoM->Fill (moduleGeometry4[jch], pathlength4[jch]*10, scaleFactor*charge_corr4[jch]/(pathlength4[jch]*10*norm_mult),presk);
+                   }
+            }
+            // Strip
+            for (unsigned int jch=0;jch<charge_corr1.size();jch++) {
+                  double Norm = 3.61e-06*norm_mult;
+                  double scaleFactor = dEdxSF[0];
+                  double ChargeOverPathlength = scaleFactor*Norm*charge_corr1[jch];
+		  if (pathlength1[jch]>0) ChargeOverPathlength/=pathlength1[jch];
+	  	  else ChargeOverPathlength=0;
+		  HHitStrip->Fill(ChargeOverPathlength, presk);
+		  if (fabs(track_eta[itr])<0.4 && bool_cleaning1[jch] && mustBeInside1[jch] )
+                             HHit2DStrip_NoM->Fill(track_p[itr], ChargeOverPathlength, presk);
+                  if (track_p[itr]>5 && track_p[itr]<45) {
+                    Charge_Vs_Path_NoM->Fill (moduleGeometry1[jch], pathlength1[jch]*10, scaleFactor*charge_corr1[jch]/(pathlength1[jch]*10),presk);
+                    Charge_Vs_Path_noL1_NoM->Fill (moduleGeometry1[jch], pathlength1[jch]*10, scaleFactor*charge_corr1[jch]/(pathlength1[jch]*10),presk);
+                  }
+             }
+         }
+         // endAPPLY
+                     
 
          int nv=0;
          int ns=0;
@@ -1733,26 +2009,29 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
          double ias_all = getdEdX(charge_corr, pathlength, subdetId, moduleGeometry, bool_cleaning, mustBeInside, dEdxSF, dEdxTemplatesAll,2, 0., nval20_0, nsat20_0);
 
          float mass_strip=-1;
-         if (ih_strip - Cval_ldstrip>0.5) mass_strip=sqrt((ih_strip - Cval_ldstrip)*track_p[itr]*track_p[itr]/Kval_ldstrip);
+         if (ih_strip - Cval_ldstrip>0.) mass_strip=sqrt((ih_strip - Cval_ldstrip)*track_p[itr]*track_p[itr]/Kval_ldstrip);
 
          float mass_ih=-1;
-         if (ih_cor - Cval_ld>0.5) mass_ih=sqrt((ih_cor - Cval_ld)*track_p[itr]*track_p[itr]/Kval_ld);
+         if (ih_cor - Cval_ld>0.) mass_ih=sqrt((ih_cor - Cval_ld)*track_p[itr]*track_p[itr]/Kval_ld);
 
          float mass_ih0=-1;
-         if (ih0_cor - Cval_all>0.5) mass_ih0= sqrt((ih0_cor - Cval_all)*track_p[itr]*track_p[itr]/Kval_all);
+         if (ih0_cor - Cval_all>0.) mass_ih0= sqrt((ih0_cor - Cval_all)*track_p[itr]*track_p[itr]/Kval_all);
 
          float mass_ih0noL1=-1;
          float mass_ih0noL1_2=-1;
          float mass_ih0noL1_3=-1;
-         if (ih0_noL1 - Cval_nol1>0.5) mass_ih0noL1= sqrt((ih0_noL1 - Cval_nol1)*track_p[itr]*track_p[itr]/Kval_nol1);
-         if (ih0_noL1 - Cval_nol1_2>0.5) mass_ih0noL1_2= sqrt((ih0_noL1 - Cval_nol1_2)*track_p[itr]*track_p[itr]/Kval_nol1_2);
-         if (ih0_noL1 - Cval_nol1_3>0.5) mass_ih0noL1_3= getMassSpecial(ih0_noL1,track_p[itr], Kval_nol1_3, Cval_nol1_3,Nval_nol1_3);
+         if (ih0_noL1 - Cval_nol1>0.) mass_ih0noL1= sqrt((ih0_noL1 - Cval_nol1)*track_p[itr]*track_p[itr]/Kval_nol1);
+         if (ih0_noL1 - Cval_nol1_2>0.) mass_ih0noL1_2= sqrt((ih0_noL1 - Cval_nol1_2)*track_p[itr]*track_p[itr]/Kval_nol1_2);
+         float val_nol1_3 = Cval_nol1_3 + (0.92*0.92*Kval_nol1_3)/(6.5*6.5) +Nval_nol1_3*log(6.5/0.92);
+         if (track_p[itr]<3) {
+           if (ih0_noL1 - val_nol1_3  >0. && computeSpecial) mass_ih0noL1_3= getMassSpecial(ih0_noL1,track_p[itr], Kval_nol1_3, Cval_nol1_3,Nval_nol1_3);
+         }
 
          float mass_0strip=-1;
-         if (ih0_strip - Cval_strip>0.5) mass_0strip= sqrt((ih0_strip - Cval_strip)*track_p[itr]*track_p[itr]/Kval_strip);
+         if (ih0_strip - Cval_strip>0.) mass_0strip= sqrt((ih0_strip - Cval_strip)*track_p[itr]*track_p[itr]/Kval_strip);
 
          float mass_ihHDnoL1=-1;
-         if (ih_corHiDropNoL1 - Cval_hdnol1>0.5) mass_ihHDnoL1= sqrt((ih_corHiDropNoL1 - Cval_hdnol1)*track_p[itr]*track_p[itr]/Kval_hdnol1);
+         if (ih_corHiDropNoL1 - Cval_hdnol1>0.) mass_ihHDnoL1= sqrt((ih_corHiDropNoL1 - Cval_hdnol1)*track_p[itr]*track_p[itr]/Kval_hdnol1);
 
          float mass_pixel=-1;
          if (ih_pix - Cval_pix>0) mass_pixel= sqrt((ih_pix - Cval_pix)*track_p[itr]*track_p[itr]/Kval_pix);
@@ -1848,6 +2127,26 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                     lowp_MassIh0noL1->Fill(mass_ih0noL1,presk);
                     lowp_MassIh0noL1_2->Fill(mass_ih0noL1_2,presk);
                     lowp_MassIh0noL1_3->Fill(mass_ih0noL1_3,presk);
+                       if (ih0_noL1> Cval_nol1) {
+                       lowp_MassIh0noL1_11->Fill(mass_ih0noL1);
+                       lowp_MassIh0noL1_12->Fill(mass_ih0noL1_2);
+                       lowp_MassIh0noL1_13->Fill(mass_ih0noL1_3);
+                       }
+                       if (ih0_noL1>3.27 + 0.21) {
+                       lowp_MassIh0noL1_1s1->Fill(mass_ih0noL1);
+                       lowp_MassIh0noL1_1s2->Fill(mass_ih0noL1_2);
+                       lowp_MassIh0noL1_1s3->Fill(mass_ih0noL1_3);
+                         if (ih0_noL1>3.27 + 2*0.21) {
+                         lowp_MassIh0noL1_2s1->Fill(mass_ih0noL1);
+                         lowp_MassIh0noL1_2s2->Fill(mass_ih0noL1_2);
+                         lowp_MassIh0noL1_2s3->Fill(mass_ih0noL1_3);
+                           if (ih0_noL1>3.27 + 3*0.21) {
+                           lowp_MassIh0noL1_3s1->Fill(mass_ih0noL1);
+                           lowp_MassIh0noL1_3s2->Fill(mass_ih0noL1_2);
+                           lowp_MassIh0noL1_3s3->Fill(mass_ih0noL1_3);
+                           }
+                         }
+                       }
                     lowp_MassIh0strip->Fill(mass_0strip,presk);
                     lowp_MassIhHDnoL1->Fill(mass_ihHDnoL1,presk);
                     lowp2d_MassIhstrip->Fill(track_p[itr],mass_strip,presk);
@@ -1970,10 +2269,12 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
                  if (layerorside==1) {  
                      Charge_pixr1->Fill(tmp[t],presk);
                      ChargeVsRun_pixr1->Fill(runNumber,tmp[t],presk);
+                     ZooChargeVsRun_pixr1->Fill(runNumber,tmp[t],presk);
                  }
                  else if (layerorside==2) {
                      Charge_pixr2->Fill(tmp[t],presk);
                      ChargeVsRun_pixr2->Fill(runNumber,tmp[t],presk);
+                     ZooChargeVsRun_pixr2->Fill(runNumber,tmp[t],presk);
                  }
               }
 /*
@@ -2300,6 +2601,8 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    ZooChargeVsRun_pixd1->Write();
    ZooChargeVsRun_pixd2->Write();
    ZooChargeVsRun_pixd3->Write();
+   ZooChargeVsRun_pixr1->Write();
+   ZooChargeVsRun_pixr2->Write();
    ZooChargeVsRun_tib1->Write();
    ZooChargeVsRun_tib2->Write();
    ZooChargeVsRun_tib3->Write();
@@ -2342,6 +2645,7 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    dEdX0pixVsRun->Write();
    dEdX0stripVsRun->Write();
    MassStripVsRun->Write();
+   MassNoL1VsRun->Write();
    dEdX0NoL1pixVsRun->Write();
    dEdX0NoL1VsRun->Write();
    dEdX4VsRun->Write();
@@ -2388,6 +2692,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    HSCP_MassIh0noL1->Write(); 
    HSCP_MassIh0noL1_2->Write(); 
    HSCP_MassIh0noL1_3->Write(); 
+   HSCP_MassIh0noL1_11->Write(); 
+   HSCP_MassIh0noL1_12->Write(); 
+   HSCP_MassIh0noL1_13->Write(); 
+   HSCP_MassIh0noL1_1s1->Write(); 
+   HSCP_MassIh0noL1_1s2->Write(); 
+   HSCP_MassIh0noL1_1s3->Write(); 
+   HSCP_MassIh0noL1_2s1->Write(); 
+   HSCP_MassIh0noL1_2s2->Write(); 
+   HSCP_MassIh0noL1_2s3->Write(); 
+   HSCP_MassIh0noL1_3s1->Write(); 
+   HSCP_MassIh0noL1_3s2->Write(); 
+   HSCP_MassIh0noL1_3s3->Write(); 
    HSCP_MassIhHDnoL1->Write(); 
    HSCP_MassTOF->Write(); 
    HSCP2d_MassTOFvsIh->Write(); 
@@ -2411,6 +2727,18 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    lowp_MassIh0noL1->Write(); 
    lowp_MassIh0noL1_2->Write(); 
    lowp_MassIh0noL1_3->Write(); 
+   lowp_MassIh0noL1_11->Write(); 
+   lowp_MassIh0noL1_12->Write(); 
+   lowp_MassIh0noL1_13->Write(); 
+   lowp_MassIh0noL1_1s1->Write(); 
+   lowp_MassIh0noL1_1s2->Write(); 
+   lowp_MassIh0noL1_1s3->Write(); 
+   lowp_MassIh0noL1_2s1->Write(); 
+   lowp_MassIh0noL1_2s2->Write(); 
+   lowp_MassIh0noL1_2s3->Write(); 
+   lowp_MassIh0noL1_3s1->Write(); 
+   lowp_MassIh0noL1_3s2->Write(); 
+   lowp_MassIh0noL1_3s3->Write(); 
    lowp_MassIhHDnoL1->Write(); 
    lowp_MassIh0strip->Write(); 
    lowp2d_MassIh->Write(); 
@@ -2448,6 +2776,15 @@ void run2analysis::Loop(int year, TString Letter, bool dataFlag=true)
    FMIP4VsEta->Write();
    HSCP_iasnol1->Write(); 
    HSCP_iasall->Write(); 
+   HSCP_probQ->Write();
+   HSCP_probQNoL1->Write();
+   HSCP_probXY->Write();
+   HSCP_probXYNoL1->Write();
+   probQVsRun->Write();
+   probQNoL1VsRun->Write();
+   probXYVsRun->Write();
+   probXYNoL1VsRun->Write();
+   probQVsIas->Write();
 
    HSCP_pt->Write(); 
    HSCP_eta->Write(); 
@@ -2528,6 +2865,7 @@ double run2analysis::getMassSpecial(float ih, float p, float K, float C, float N
                       ebest=fabs(evalval2);
           }
      }
+     else if (evalval2>0.001) i+=2000; // this should allow to stop the search of solution
    }
    else {
      float m2=m1-i*0.0001*m1;
@@ -2539,6 +2877,7 @@ double run2analysis::getMassSpecial(float ih, float p, float K, float C, float N
                          ebest=fabs(evalval2);
                     }
            }
+           else if (evalval2<-0.001) i+=2000; // this should allow to stop the search of solution
       }
    }
   }

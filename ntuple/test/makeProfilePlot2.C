@@ -440,7 +440,11 @@ void GetSF() {
 //     _file0 = TFile::Open("analysis_ulMC_w17_highstat_woSF.root");
 //     _file0 = TFile::Open("analysis_ul_2017_wSF_15dec.root");
 //     _file0 = TFile::Open("analysis_ulMC_w17_MC_21jan.root");
-     _file0 = TFile::Open("analysis_ulMC_w17_MC_wSF_15dec.root");
+//     _file0 = TFile::Open("analysis_ulMC_w17_MC_wSF_15dec.root");
+//     _file0 = TFile::Open("analysis_ulMC_w17_MC_10feb_fullsel.root");
+//     _file0 = TFile::Open("analysis_ulMC_w17_MC_8feb_oldsel.root");
+//     _file0 = TFile::Open("analysis_ul_2018MC_w18_MC_dedx1_25feb.root");
+     _file0 = TFile::Open("analysis_ul_2018MC_w18_MC_28feb.root");
      _file0->cd();
      HdedxVsP2 = (TH2D*) gROOT->FindObject("HHit2DPix");
      HdedxVsP1 = (TH2D*) gROOT->FindObject("HHit2DStrip");
@@ -448,7 +452,9 @@ void GetSF() {
   else if (data_alone) {
 //     _file0 = new TFile ("/opt/sbg/cms/safe1/cms/ccollard/HSCP/CMSSW_10_6_12/src/stage/ntuple/test/analysisRun2/analysis_ul_2017_newIh.root");
 //     _file0 = new TFile ("analysis_ul_2017_wSF_15dec.root");
-     _file0 = new TFile ("analysis_ul_2017_21jan.root");
+//     _file0 = new TFile ("analysis_ul_2017_21jan.root");
+//     _file0 = new TFile ("analysis_ul_2018_dedx1_25feb_B2D.root");
+     _file0 = new TFile ("analysis_ul_2018_28feb.root");
      _file0->cd();
      HdedxVsP2 = (TH2D*) gROOT->FindObject("HHit2DPix");
      HdedxVsP1 = (TH2D*) gROOT->FindObject("HHit2DStrip");
@@ -457,15 +463,20 @@ void GetSF() {
 //     _file0 = TFile::Open("analysis_ulMC_w17_MC_newIh.root");
 //     _file0 = TFile::Open("analysis_ulMC_w17_highstat_woSF.root");
 //     _file0 = TFile::Open("analysis_ulMC_w17_MC_21jan.root");
-     _file0 = new TFile ("analysis_ul_2017_21jan.root");
+//     _file0 = new TFile ("analysis_ul_2017_21jan.root");
+//     _file0 = new TFile ("analysis_ul_2018_dedx1_25feb_B2D.root");
+     _file0 = new TFile ("analysis_ul_2018_28feb.root");
      _file0->cd();
-     HdedxVsP2 = (TH2D*) gROOT->FindObject("HHit2DStrip");
+     HdedxVsP1 = (TH2D*) gROOT->FindObject("HHit2DStrip");
 //     _file1 = new TFile ("/opt/sbg/cms/safe1/cms/ccollard/HSCP/CMSSW_10_6_12/src/stage/ntuple/test/analysisRun2/analysis_ul_2017_newIh.root");
 //     _file1 = TFile::Open("analysis_ul_2017_wSF_15dec.root");
 //     _file1 = TFile::Open("analysis_ulMC_w17_MC_wSF_15dec.root");
-     _file1 = new TFile ("analysis_ul_2017_wSF_15dec.root");
+//     _file1 = new TFile ("analysis_ul_2017_wSF_15dec.root");
+//     _file1 = new TFile ("analysis_ulMC_w17_MC_10feb_fullsel.root");
+//     _file1 = TFile::Open("analysis_ul_2018MC_w18_MC_dedx1_25feb.root");
+     _file1 = TFile::Open("analysis_ul_2018MC_w18_MC_28feb.root");
      _file1->cd();
-     HdedxVsP1 = (TH2D*) gROOT->FindObject("HHit2DStrip");
+     HdedxVsP2 = (TH2D*) gROOT->FindObject("HHit2DStrip");
   }
 
 
@@ -540,7 +551,7 @@ void GetSF() {
 
    TCanvas* c2 = new TCanvas("c2", "c2", 600,600);
    TLegend* leg = new TLegend (0.25, 0.70, 0.65, 0.90);
-   leg->SetHeader ("Fitting the Profile");
+   leg->SetHeader ("Fitting the Gaussian means");
    leg->SetFillColor(0);
    leg->SetFillStyle(0);
    leg->SetBorderSize(0);

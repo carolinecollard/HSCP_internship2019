@@ -34,6 +34,8 @@ void ExtractConstants(TH2D* input1, TH2D* input2, double* K, double* C, double* 
 double GetMass(double P, double I, double* K, double* C);
 void SaveCanvas(TCanvas* c, std::string path, std::string name, bool OnlyPPNG=false);
 TF1* GetMassLine(double M, double K, double C, bool left=false);
+void ExtracttheCConstants(TH2D* inputlong, double* C,  double* Cerr) ;
+void FitCalone(TString filename);
 void FitKandC_sig();
 void ExtractConstants_sig(TH2D* input, double* K, double* C, double* Kerr, double* Cerr, double MinRange = 1.0, double MaxRange = 1.6, double MassCenter = 1.875); // by default use protons
 void ExtractProj(TH2D* inputlong, TH2D* inputshort,double* K, double* C, 
@@ -60,35 +62,47 @@ void FitKandC(TString filename){
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("HdedxVsP2");
 //    // Ih 15% drop
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdXVsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXVsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXVsP_lowp2");
 //    // Ih 15% drop, strip only
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdXstripVsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXstripVsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXstripVsP_lowp2");
 //    // Ih no drop
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0VsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0VsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0VsP_lowp2");
 //    // Ih no drop, no L1
 
+
+
+/*
    HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp");
-   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp2");
-//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp");
-   HdedxVsP_2fit->Rebin2D(2,1);
+   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp2");
+//   HdedxVsP_2fit->Rebin2D(2,1);
+*/
+
+
+
 
 //    // Ih no drop, strip only
-//    --> not yet
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0stripVsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0stripVsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0stripVsP_lowp2");
 //    // Ih 15% high drop, no L1 pix
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdXHDnoL1VsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXHDnoL1VsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXHDnoL1VsP_lowp2");
 //    // Ih 15% drop, pix only
 //    pixelOnly=true;
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdXpixVsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXpixVsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXpixVsP_lowp2");
 //    // Ih no drop, pix only, no L1
-//    pixelOnly=true;
-//   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
-//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
+    pixelOnly=true;
+   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
+   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp2");
 //    // Ih no drop, no L1 eta bins
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_eta1_lowp");
@@ -110,6 +124,7 @@ void FitKandC(TString filename){
 //   ExtractConstants (HdedxVsP_2fit, HdedxVsP_1fit, &Ktmp, &Ctmp, &KerrTmp, &CerrTmp, 0.75, 1.5, 0.938, 0.2, 0.8, 4.2);
 //     if (!pixelOnly) ExtractConstants (HdedxVsP_2fit, HdedxVsP_1fit, &Ktmp, &Ctmp, &KerrTmp, &CerrTmp, 0.6, 1.5, 0.938, 0.2, 0.8, 4.2);
      if (!pixelOnly) ExtractConstants (HdedxVsP_2fit, HdedxVsP_1fit, &Ktmp, &Ctmp, &KerrTmp, &CerrTmp, 0.5, 1.5, 0.938, 0.2, 0.5, 4.2);
+//     if (!pixelOnly) ExtractConstants (HdedxVsP_2fit, HdedxVsP_1fit, &Ktmp, &Ctmp, &KerrTmp, &CerrTmp, 0.5, 1.3, 0.938, 0.2, 0.5, 4.2);
   // for Pixel only 
      else ExtractConstants (HdedxVsP_2fit, HdedxVsP_1fit, &Ktmp, &Ctmp, &KerrTmp, &CerrTmp, 0.6, 1., 0.938, 0.1, 0.8, 4.2);
 
@@ -190,6 +205,32 @@ void FitKandC_sig(){
    
 
 }
+void FitCalone(TString filename){
+   double C_ = 3.; double Cerr_ = 0.001;
+   double Ctmp = C_;  double CerrTmp = Cerr_;
+   TFile* myfile;
+   myfile = new TFile (filename);
+
+   TH2D* HdedxVsP_2fit;
+   myfile->cd();
+   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp2");
+   HdedxVsP_2fit->Rebin2D(2,1);
+
+   ExtracttheCConstants (HdedxVsP_2fit, &Ctmp, &CerrTmp);
+
+
+   TCanvas* c2 = new TCanvas("c2", "c2", 800,600);
+   c2->cd();
+
+   TLine* linepion = new TLine(2.,Ctmp,25., Ctmp);
+   linepion->SetLineColor(1);
+   linepion->SetLineWidth(2);
+
+   HdedxVsP_2fit->Draw("colz");
+   linepion->Draw("same");
+   SaveCanvas(c2, "dirtest/", "test_LineC");
+
+}
 
 
 void ExtractConstants(TH2D* inputlong, TH2D* inputshort,double* K, double* C, double* Kerr, double* Cerr,
@@ -199,7 +240,8 @@ void ExtractConstants(TH2D* inputlong, TH2D* inputshort,double* K, double* C, do
        bool hasConverged = false;
 
 //       for(unsigned int loop=0;loop<5 and !hasConverged; loop++){
-       for(unsigned int loop=0;loop<8 and !hasConverged; loop++){
+//       for(unsigned int loop=0;loop<8 and !hasConverged; loop++){
+       for(unsigned int loop=0;loop<20 and !hasConverged; loop++){
 	      TH2D* inputnew = (TH2D*)inputshort->Clone("tempTH2D");
 	      TH2D* inputnewPion = (TH2D*)inputlong->Clone("tempTH2D2");
 //	      inputnew->Rebin2D(5,10);
@@ -208,15 +250,22 @@ void ExtractConstants(TH2D* inputlong, TH2D* inputshort,double* K, double* C, do
 		double Mass = GetMass(inputnew->GetXaxis()->GetBinCenter(x),inputnew->GetYaxis()->GetBinCenter(y), K, C);
 		if(isnan (float(Mass)) || Mass<MassCenter-(LeftMassMargin) || Mass>MassCenter+RightMassMargin){
 		  inputnew->SetBinContent(x,y,0);        
+		  inputnew->SetBinError(x,y,0);        
 		  //cout<<x<<"   "<<y<<endl;
 		}
 	      }}
 	      for(int x=0;x<=inputnewPion->GetNbinsX()+1;x++){
    	        for(int y=0;y<=inputnewPion->GetNbinsY()+1;y++){
 //                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<10) inputnewPion->SetBinContent(x,y,0);
-                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<2.5) inputnewPion->SetBinContent(x,y,0);
+                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<2.5) {
+                          inputnewPion->SetBinContent(x,y,0);
+                          inputnewPion->SetBinError(x,y,0);
+                    }
 //                    if (inputnewPion->GetXaxis()->GetBinCenter(x)>10) inputnewPion->SetBinContent(x,y,0);
-	  	    if (inputnewPion->GetYaxis()->GetBinCenter(y)<2 || inputnewPion->GetYaxis()->GetBinCenter(y)>yPionMax) inputnewPion->SetBinContent(x,y,0);
+	  	    if (inputnewPion->GetYaxis()->GetBinCenter(y)<2 || inputnewPion->GetYaxis()->GetBinCenter(y)>yPionMax) {
+                          inputnewPion->SetBinContent(x,y,0);
+                          inputnewPion->SetBinError(x,y,0);
+                    }
 	      }}
 //	      inputnewPion->Rebin2D(10,10);
 
@@ -352,8 +401,9 @@ void ExtractConstants(TH2D* inputlong, TH2D* inputshort,double* K, double* C, do
 	       fitC->SetLineWidth(2);
                fitC->SetLineColor(2);
                FitResultPion->Fit("fitC", "M R E I 0");
-               fitC->SetRange(5.,25);
-//               fitC->SetRange(3.,5);
+//               fitC->SetRange(5.,25);
+               fitC->SetRange(3.,5);
+//               fitC->SetRange(3.5,5);
                fitC->Draw("same");
 	       *C    = fitC->GetParameter(0);
 	       *Cerr = fitC->GetParError(0);
@@ -423,6 +473,58 @@ void ExtractConstants(TH2D* inputlong, TH2D* inputshort,double* K, double* C, do
           delete FitResult;
           delete inputnew;
        }
+}
+
+void ExtracttheCConstants(TH2D* inputlong, double* C,  double* Cerr) 
+{
+       char buffer[2048];
+
+	      TH2D* inputnewPion = (TH2D*)inputlong->Clone("tempTH2D2");
+	      for(int x=0;x<=inputnewPion->GetNbinsX()+1;x++){
+   	        for(int y=0;y<=inputnewPion->GetNbinsY()+1;y++){
+                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<10) {
+                       inputnewPion->SetBinContent(x,y,0); 
+                       inputnewPion->SetBinError(x,y,0); 
+                    }
+	  	    if (inputnewPion->GetYaxis()->GetBinCenter(y)<2 || inputnewPion->GetYaxis()->GetBinCenter(y)>4.2) {
+                       inputnewPion->SetBinContent(x,y,0);
+                       inputnewPion->SetBinError(x,y,0);
+                    }
+	      }}
+
+
+	      TCanvas* c1 = new TCanvas("c1", "c1", 800,600);
+	      c1->SetLogz(true);
+
+	      inputnewPion->SetStats(kFALSE);
+	      inputnewPion->GetXaxis()->SetTitle("track momentum (GeV)");
+	      inputnewPion->GetYaxis()->SetTitle("dE/dx (MeV/cm)");
+	      inputnewPion->SetAxisRange(0,25,"X");
+	      inputnewPion->SetAxisRange(0,15,"Y");
+              inputnewPion->Draw("COLZ");
+
+	      SaveCanvas(c1, "dirtest/", "testCalone_region");
+
+
+	      TH1D* ProjectionPion = (TH1D*)inputnewPion->ProjectionY("proj");
+              cout << " mean value " << ProjectionPion->GetMean() << " RMS " << ProjectionPion->GetRMS() << endl;
+              float xminval = ProjectionPion->GetMean() - 0.5;
+              float xmaxval = ProjectionPion->GetMean() + 0.5;
+//              TF1* mygausPion = new TF1("mygausPion","gaus", 2., 5.);
+              TF1* mygausPion = new TF1("mygausPion","gaus", xminval, xmaxval);
+              ProjectionPion->Fit("mygausPion","Q0 RME");
+	      cout<< " mygausPion  mean   " <<mygausPion->GetParameter(1) << "  "<<mygausPion->GetParError(1)<<endl;
+	      cout<< " mygausPion  sigma   " <<mygausPion->GetParameter(2)<<"  "<<mygausPion->GetParError(2)<<endl;
+
+	       *C    = mygausPion->GetParameter(1);
+	       *Cerr = mygausPion->GetParameter(2);
+	       cout<< "FitResultPion : "<<*C<<"   " <<*Cerr<< endl;
+               
+               ProjectionPion->Draw();
+               mygausPion->Draw("same");
+	       sprintf(buffer,"%sFitC_highp","fit/");
+	       SaveCanvas(c1,"dirtest/",buffer);              
+
 }
 
 void ExtractConstants_sig(TH2D* input, double* K, double* C, double* Kerr, double* Cerr,
@@ -760,12 +862,19 @@ void ExtractProj(TH2D* inputlong, TH2D* inputshort,double* K, double* C,
 		double Mass = GetMass(inputnew->GetXaxis()->GetBinCenter(x),inputnew->GetYaxis()->GetBinCenter(y), K, C);
 		if(isnan (float(Mass)) || Mass<MassCenter-(LeftMassMargin) || Mass>MassCenter+RightMassMargin){
 		  inputnew->SetBinContent(x,y,0);        
+		  inputnew->SetBinError(x,y,0);        
 		}
 	      }}
 	      for(int x=0;x<=inputnewPion->GetNbinsX()+1;x++){
    	        for(int y=0;y<=inputnewPion->GetNbinsY()+1;y++){
-                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<2.5) inputnewPion->SetBinContent(x,y,0);
-	  	    if (inputnewPion->GetYaxis()->GetBinCenter(y)<2 || inputnewPion->GetYaxis()->GetBinCenter(y)>yPionMax) inputnewPion->SetBinContent(x,y,0);
+                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<2.5) {
+                          inputnewPion->SetBinContent(x,y,0);
+                          inputnewPion->SetBinError(x,y,0);
+                    }
+	  	    if (inputnewPion->GetYaxis()->GetBinCenter(y)<2 || inputnewPion->GetYaxis()->GetBinCenter(y)>yPionMax) {
+                          inputnewPion->SetBinContent(x,y,0);
+                          inputnewPion->SetBinError(x,y,0);
+                    }
 	      }}
 
 	      
@@ -880,6 +989,7 @@ void TestExtractConstants(TH2D* inputlong, TH2D* inputshort, double* K, double* 
 		double Mass = GetMass(inputnew->GetXaxis()->GetBinCenter(x),inputnew->GetYaxis()->GetBinCenter(y), K, C);
 		if(isnan (float(Mass)) || Mass<MassCenter-(LeftMassMargin) || Mass>MassCenter+RightMassMargin){
 		  inputnew->SetBinContent(x,y,0);        
+		  inputnew->SetBinError(x,y,0);        
 		}
                 else {
                   if (Myinputnew->GetXaxis()->GetBinCenter(x)<1.5) {
@@ -891,8 +1001,14 @@ void TestExtractConstants(TH2D* inputlong, TH2D* inputshort, double* K, double* 
 	      }}
 	      for(int x=0;x<=inputnewPion->GetNbinsX()+1;x++){
    	        for(int y=0;y<=inputnewPion->GetNbinsY()+1;y++){
-                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<3.0) inputnewPion->SetBinContent(x,y,0);
-	  	    if (inputnewPion->GetYaxis()->GetBinCenter(y)<2 || inputnewPion->GetYaxis()->GetBinCenter(y)>yPionMax) inputnewPion->SetBinContent(x,y,0);
+                    if (inputnewPion->GetXaxis()->GetBinCenter(x)<3.0) {
+                        inputnewPion->SetBinContent(x,y,0);
+                        inputnewPion->SetBinError(x,y,0);
+                    }
+	  	    if (inputnewPion->GetYaxis()->GetBinCenter(y)<2 || inputnewPion->GetYaxis()->GetBinCenter(y)>yPionMax) {
+                       inputnewPion->SetBinContent(x,y,0);
+                       inputnewPion->SetBinError(x,y,0);
+                    }
                     Myinputnew->Fill(inputnewPion->GetXaxis()->GetBinCenter(x),inputnewPion->GetYaxis()->GetBinCenter(y),inputnewPion->GetBinContent(x,y));
 	      }}
 
