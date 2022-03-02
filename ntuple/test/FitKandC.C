@@ -76,12 +76,12 @@ void FitKandC(TString filename){
 
 
 
-/*
+
    HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp");
    HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_lowp2");
 //   HdedxVsP_2fit->Rebin2D(2,1);
-*/
+
 
 
 
@@ -100,9 +100,9 @@ void FitKandC(TString filename){
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXpixVsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdXpixVsP_lowp2");
 //    // Ih no drop, pix only, no L1
-    pixelOnly=true;
-   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
-   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
+//    pixelOnly=true;
+//   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
+//   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp");
 //   HdedxVsP_2fit = (TH2D*)gROOT->FindObject("dEdX0pixnoL1VsP_lowp2");
 //    // Ih no drop, no L1 eta bins
 //   HdedxVsP_1fit = (TH2D*)gROOT->FindObject("dEdX0noL1VsP_eta1_lowp");
